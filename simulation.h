@@ -24,6 +24,8 @@
 #define PARAMETER_MODE_GAMMA 1
 #define PARAMETER_MODE_GLOBAL 2
 #define PARAMETER_MODE_LOCAL 3
+#define PARAMETER_MODE_LOCAL_NON_GENETIC 4
+#define PARAMETER_MODE_GLOBAL_NON_GENETIC 5
 
 //Define below for TREE_MODE_MAX should be the max value used above
 #define TREE_MODE_MAX 8

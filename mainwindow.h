@@ -79,6 +79,8 @@ public:
     int getParameterMode();
     int get_precise_leaf_count();
     void log_identical_genomes(QString text);
+    double getspeciationchangeperstep();
+    double getextinctionchangeperstep();
 public slots:
     void on_actionExit_triggered();
     void on_actionLogged_triggered();

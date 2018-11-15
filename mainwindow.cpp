@@ -49,6 +49,9 @@ MainWindow::MainWindow(QWidget *parent) :
     parameterGroup->addAction(ui->actionLocal_evolving_model);
     parameterGroup->addAction(ui->actionNone_fixed);
     parameterGroup->addAction(ui->actionVarying_Tree_Parameters);
+    parameterGroup->addAction(ui->actionGlobal_evolving_non_genetic_model);
+    parameterGroup->addAction(ui->actionPer_lineage_non_genetic_model);
+    parameterGroup->addAction(ui->actionVarying_Tree_Parameters);
     ui->actionNone_fixed->setChecked(true);
 
     //create a simulation opject
@@ -614,6 +617,16 @@ double MainWindow::getspeciationmodifier()
    return ui->speciationmodifier->value();
 }
 
+double MainWindow::getspeciationchangeperstep()
+{
+    return ui->SpeciationChangePerStep->value();
+}
+
+double MainWindow::getextinctionchangeperstep()
+{
+    return ui->ExtinctionChangePerStep->value();
+}
+
 int MainWindow::getabsthreshold()
 {
    return ui->threshold_abs->value();
@@ -750,6 +763,9 @@ int MainWindow::getParameterMode()
     if (ui->actionLocal_evolving_model->isChecked()) return PARAMETER_MODE_LOCAL;
     if (ui->actionVarying_Tree_Parameters->isChecked()) return PARAMETER_MODE_GAMMA;
     if (ui->actionNone_fixed->isChecked()) return PARAMETER_MODE_FIXED;
+    if (ui->actionPer_lineage_non_genetic_model->isChecked()) return PARAMETER_MODE_LOCAL_NON_GENETIC;
+    if (ui->actionGlobal_evolving_non_genetic_model->isChecked()) return PARAMETER_MODE_GLOBAL_NON_GENETIC;
+
     return PARAMETER_MODE_FIXED; // a default
 }
 

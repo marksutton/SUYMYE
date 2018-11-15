@@ -72,6 +72,7 @@ public:
     int count_zeros(int word, quint32 mask);
     int count_ones(int word, quint32 mask);
     void addstringgenomestoset(QSet<QString> *set);
+    void random_walk_rates();
 private:
 
     void setgenuslabels(qint64 currentlabel, bool labelfossils=false);
@@ -90,6 +91,8 @@ extern double CHANCE_EXTINCT_DOUBLE;
 extern double CHANCE_SPECIATE_DOUBLE;
 extern double EXTINCTION_MODIFIER;
 extern double SPECIATION_MODIFIER;
+extern double SPECIATION_CHANGE_PER_STEP;
+extern double EXTINCTION_CHANGE_PER_STEP;
 extern int CHANCE_MUTATE;
 extern int ABS_THRESHOLD;
 extern qint64 speccount;

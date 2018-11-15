@@ -47,7 +47,12 @@ int RDTPLUS_MERGE_THRESHOLD;
 
 double SPECIATION_MODIFIER;
 double EXTINCTION_MODIFIER;
+double SPECIATION_CHANGE_PER_STEP;
+double EXTINCTION_CHANGE_PER_STEP;
+
+
 bool COUPLE_RATES;
+double COUPLE_OFFSET;
 
 int EXTRA_MUTATES;
 quint32 MUTATE_CHANCES[CHARACTER_WORDS*32];
@@ -156,8 +161,11 @@ void Simulation::run(MainWindow *mainwin)
     CHANCE_SPECIATE_DOUBLE=mw->getchancespeciate();
     SPECIATION_MODIFIER=mw->getspeciationmodifier();
     EXTINCTION_MODIFIER=mw->getextinctionmodifier();
+    SPECIATION_CHANGE_PER_STEP=mw->getspeciationchangeperstep();
+    EXTINCTION_CHANGE_PER_STEP=mw->getextinctionchangeperstep();
 
     COUPLE_RATES=mw->getCoupleRates();
+    COUPLE_OFFSET=CHANCE_SPECIATE_DOUBLE-CHANCE_EXTINCT_DOUBLE;
 
     dCHANCE_MUTATE=mw->getchancemutate();
     dCHANCE_MUTATE_MULTIPLIER=mw->getmutatechancevariation();
@@ -187,7 +195,7 @@ void Simulation::run(MainWindow *mainwin)
     bool usefossils=mw->getIncludeFossils();
     bool enforcemonophyly=mw->getEnforceMonophyly();
     parameter_mode=mw->getParameterMode();
-    if ((parameter_mode==PARAMETER_MODE_GLOBAL || parameter_mode==PARAMETER_MODE_LOCAL) && (SPECIATION_MODIFIER<0.00001 && EXTINCTION_MODIFIER<0.00001))
+    if ((parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL || parameter_mode==PARAMETER_MODE_LOCAL) && (SPECIATION_MODIFIER<0.00001 && EXTINCTION_MODIFIER<0.00001))
             parameter_mode=PARAMETER_MODE_FIXED; //if envelopes aren't set, just make it fixed
 
     QVector<quint32> saturation_array;
@@ -211,9 +219,24 @@ void Simulation::run(MainWindow *mainwin)
         if (parameter_mode==PARAMETER_MODE_GLOBAL)
         {
             quint32 dummycharacters[CHARACTER_WORDS];
-            randomcharacters(dummycharacters);
+            randomcharacters(dummycharacters); //set up characters for start
+            //dummy lineage will be read for ext/speciation chance
             dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
         }
+
+        if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
+        {
+            quint32 dummycharacters[CHARACTER_WORDS];
+            randomcharacters(dummycharacters); //set up characters for start
+            //dummy lineage will be read for ext/speciation chance
+            dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
+
+            dummy_parameter_lineage->extinct_prob=CHANCE_EXTINCT_DOUBLE;
+            dummy_parameter_lineage->speciate_prob=CHANCE_SPECIATE_DOUBLE;
+            //in this mode we are going to random walk extinction/speciation - so we set them to the specified start point
+
+        }
+
 
         //sort out mutation mode - done for each tree.
         character_mutation_mode=mw->getCharacterMutationMode();
@@ -267,6 +290,8 @@ void Simulation::run(MainWindow *mainwin)
 
         //create a root species
         rootspecies=new Lineage(startcharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
+        rootspecies->extinct_prob=CHANCE_EXTINCT_DOUBLE;
+        rootspecies->speciate_prob=CHANCE_SPECIATE_DOUBLE;
 
 
         //Run tree for correct number of iterations
@@ -289,6 +314,14 @@ void Simulation::run(MainWindow *mainwin)
             {
                 //do a mutation for the dummy parameter lineage
                 dummy_parameter_lineage->domutation();
+            }
+
+            if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
+            {
+                //do a mutation for the dummy parameter lineage
+                dummy_parameter_lineage->random_walk_rates();
+                qDebug()<<j<<": speciation "<<dummy_parameter_lineage->speciate_prob<<"  extinction "<<dummy_parameter_lineage->extinct_prob;
+
             }
 
             increment();

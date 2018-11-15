@@ -30,6 +30,7 @@ extern int STT_THRESHOLD;
 extern int EXTRA_MUTATES;
 extern int FDTPLUS_THRESHOLD;
 extern bool COUPLE_RATES;
+extern double COUPLE_OFFSET;
 extern double SPECIATION_MODIFIER;
 extern double EXTINCTION_MODIFIER;
 extern quint32 MUTATE_CHANCES[];
@@ -72,6 +73,11 @@ Lineage::Lineage(quint32 characters[], Lineage *parent, qint64 timestamp, quint3
             initial_characters[i]=characters[i];
     }
 
+    if (parent!=0)
+    {
+        speciate_prob=parent->speciate_prob;
+        extinct_prob=parent->extinct_prob;
+    }
     calculate_extinction_and_speciation();
 }
 
@@ -132,17 +138,93 @@ void Lineage::domutation()
         default: break;
     }
 
-    calculate_extinction_and_speciation(); //probably changed
+    calculate_extinction_and_speciation();
+
+}
+
+void Lineage::random_walk_rates()
+{
+    //tweak extinction and speciation rates
+    quint32 r=TheSimGlobal->GetRandom();
+    r%=3;
+    //r==0 means not move - 1/3 of the time
+    if (r==1) //up
+    {
+        speciate_prob+=SPECIATION_CHANGE_PER_STEP;
+        //cap at both envelope and 1
+        if (speciate_prob>CHANCE_SPECIATE_DOUBLE+SPECIATION_MODIFIER) speciate_prob=CHANCE_SPECIATE_DOUBLE+SPECIATION_MODIFIER;
+        if (speciate_prob>1.0) speciate_prob=1.0;
+    }
+    if (r==2) //down
+    {
+        speciate_prob-=SPECIATION_CHANGE_PER_STEP;
+        //cap at both envelope and 1
+        if (speciate_prob<CHANCE_SPECIATE_DOUBLE-SPECIATION_MODIFIER) speciate_prob=CHANCE_SPECIATE_DOUBLE-SPECIATION_MODIFIER;
+        if (speciate_prob<0) speciate_prob=0;
+    }
+
+
+    if (COUPLE_RATES)
+    {
+        //just link extinction to speciation
+        extinct_prob=qBound(0.0,speciate_prob-COUPLE_OFFSET,1.0);
+    }
+    else
+    {
+        //repeat for extinction
+        r=TheSimGlobal->GetRandom();
+        r%=3;
+        //r==0 means not move - 1/3 of the time
+        if (r==1) //up
+        {
+            extinct_prob+=EXTINCTION_CHANGE_PER_STEP;
+            //cap at both envelope and 1
+            if (extinct_prob>CHANCE_EXTINCT_DOUBLE+EXTINCTION_MODIFIER) extinct_prob=CHANCE_EXTINCT_DOUBLE+EXTINCTION_MODIFIER;
+            if (extinct_prob>1.0) extinct_prob=1.0;
+        }
+        if (r==2) //down
+        {
+            extinct_prob-=EXTINCTION_CHANGE_PER_STEP;
+            //cap at both envelope and 1
+            if (extinct_prob<CHANCE_EXTINCT_DOUBLE-EXTINCTION_MODIFIER) extinct_prob=CHANCE_EXTINCT_DOUBLE-EXTINCTION_MODIFIER;
+            if (extinct_prob<0) extinct_prob=0;
+        }
+
+    }
+
 
 }
 
 void Lineage::calculate_extinction_and_speciation()
 //works out base chance of extinct and speciation from globals and genome
-//Otherwise - add or subtract according to bitcount of the genome. LS half of each word for speciate, MS for extinct
+//non-genetic methods random walk the values
+//For genetic methods - add or subtract according to bitcount of the genome. LS half of each word for speciate, MS for extinct
 //Scale according to EXTINCTION_MODIFIER and SPECIATION_MODIFIER
 //such that min is (base-modifier), max is (base+modifier). Clamp to 0-1 as well
 {
+
+    if (parameter_mode==PARAMETER_MODE_FIXED || parameter_mode==PARAMETER_MODE_GAMMA)
+    {
+        extinct_prob=CHANCE_EXTINCT_DOUBLE;
+        speciate_prob=CHANCE_SPECIATE_DOUBLE;
+        return;
+    }
+
+    if (parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC)
+    {
+        random_walk_rates();
+        return;
+    }
+
+    if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
+    {
+        if (dummy_parameter_lineage==0) return;
+        speciate_prob=dummy_parameter_lineage->speciate_prob;
+        extinct_prob=dummy_parameter_lineage->extinct_prob;
+    }
+
     if (parameter_mode==PARAMETER_MODE_LOCAL)
+    //genetic control of parameters
     {
         int bitcountspeciate=0;
         int bitcountextinct=0;
@@ -157,19 +239,18 @@ void Lineage::calculate_extinction_and_speciation()
             ,1.0);
 
         if (COUPLE_RATES)
-            extinct_prob=qBound(0.0,speciate_prob-.01,1.0);
+            extinct_prob=qBound(0.0,speciate_prob-COUPLE_OFFSET,1.0);
         else
         extinct_prob=qBound(0.0,CHANCE_EXTINCT_DOUBLE+
             ((double)(8*CHARACTER_WORDS-bitcountextinct))*EXTINCTION_MODIFIER/(double)(CHARACTER_WORDS*8)
             ,1.0);
+
+        return;
+
     }
-    if (parameter_mode==PARAMETER_MODE_FIXED || parameter_mode==PARAMETER_MODE_GAMMA)
-    {
-        extinct_prob=CHANCE_EXTINCT_DOUBLE;
-        speciate_prob=CHANCE_SPECIATE_DOUBLE;
-    }
+
     if (parameter_mode==PARAMETER_MODE_GLOBAL)
-    //as for local, but use the dummy lineage
+    //as for local genetic control, but use the dummy lineage
     {
         if (dummy_parameter_lineage==0) return; //should only happen when constructing that lineage
         int bitcountspeciate=0;
@@ -185,11 +266,13 @@ void Lineage::calculate_extinction_and_speciation()
             ,1.0);
 
         if (COUPLE_RATES)
-            extinct_prob=qBound(0.0,speciate_prob-.01,1.0);
+            extinct_prob=qBound(0.0,speciate_prob-COUPLE_OFFSET,1.0);
         else
         extinct_prob=qBound(0.0,CHANCE_EXTINCT_DOUBLE+
             ((double)(8*CHARACTER_WORDS-bitcountextinct))*EXTINCTION_MODIFIER/(double)(CHARACTER_WORDS*8)
             ,1.0);
+        return;
+
     }
 }
 
@@ -238,13 +321,16 @@ void Lineage::iterate(qint64 timestamp)
         return;
     }
 
-    domutation();
+    domutation(); //also works out correct extinction/speciation rates
+
     //get a random double (0-1)
     quint32 r=TheSimGlobal->GetRandom();
     double rdouble=((double)r)/65536;
     rdouble/=65536;
 
-    //qDebug()<<speciate_prob<<extinct_prob;
+    //if (id%100==0) qDebug()<<"CORE"<<timestamp<<id<<" ext "<<extinct_prob<< " spec "<<speciate_prob;
+    //if (parent_lineage!=nullptr)
+    //    if (parent_lineage->id%100==0) qDebug()<<"OFFSPRING OF CORE"<<timestamp<<id<<" ext "<<extinct_prob<< " spec "<<speciate_prob;
 
     if (rdouble<extinct_prob) //lineage went extinct
     {

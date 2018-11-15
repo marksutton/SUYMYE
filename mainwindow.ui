@@ -34,6 +34,29 @@
            <enum>QFrame::Raised</enum>
           </property>
           <layout class="QGridLayout" name="gridLayout">
+           <item row="10" column="2">
+            <widget class="QDoubleSpinBox" name="ExtinctionChangePerStep">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.001000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="0">
+            <widget class="QLabel" name="label_23">
+             <property name="text">
+              <string>Extinction change per step</string>
+             </property>
+            </widget>
+           </item>
            <item row="1" column="0">
             <widget class="QLabel" name="label_3">
              <property name="text">
@@ -168,13 +191,6 @@
              </property>
             </widget>
            </item>
-           <item row="10" column="3">
-            <widget class="QLabel" name="label_22">
-             <property name="text">
-              <string>Precise leaf count (0=any)</string>
-             </property>
-            </widget>
-           </item>
            <item row="5" column="4">
             <widget class="QSpinBox" name="threshold_idt">
              <property name="minimum">
@@ -230,14 +246,14 @@
              </property>
             </widget>
            </item>
-           <item row="11" column="0">
+           <item row="13" column="0">
             <widget class="QLabel" name="label_13">
              <property name="text">
               <string>Filename stub</string>
              </property>
             </widget>
            </item>
-           <item row="11" column="2">
+           <item row="13" column="2">
             <widget class="QLineEdit" name="stub"/>
            </item>
            <item row="7" column="0">
@@ -369,14 +385,14 @@
              </property>
             </widget>
            </item>
-           <item row="10" column="0">
+           <item row="11" column="0">
             <widget class="QLabel" name="label_21">
              <property name="text">
               <string>Speciation envelope</string>
              </property>
             </widget>
            </item>
-           <item row="10" column="2">
+           <item row="11" column="2">
             <widget class="QDoubleSpinBox" name="speciationmodifier">
              <property name="decimals">
               <number>4</number>
@@ -452,6 +468,20 @@
              </property>
             </widget>
            </item>
+           <item row="12" column="0">
+            <widget class="QLabel" name="label_24">
+             <property name="text">
+              <string>Speciation change per step</string>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="3">
+            <widget class="QLabel" name="label_22">
+             <property name="text">
+              <string>Precise leaf count (0=any)</string>
+             </property>
+            </widget>
+           </item>
            <item row="10" column="4">
             <widget class="QSpinBox" name="precise_leaf_count">
              <property name="minimum">
@@ -462,6 +492,22 @@
              </property>
              <property name="value">
               <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="2">
+            <widget class="QDoubleSpinBox" name="SpeciationChangePerStep">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.001000000000000</double>
              </property>
             </widget>
            </item>
@@ -584,9 +630,11 @@
       <string>Speciation/Extinction rate variation</string>
      </property>
      <addaction name="actionNone_fixed"/>
+     <addaction name="actionVarying_Tree_Parameters"/>
      <addaction name="actionGlobal_evolving_model"/>
      <addaction name="actionLocal_evolving_model"/>
-     <addaction name="actionVarying_Tree_Parameters"/>
+     <addaction name="actionGlobal_evolving_non_genetic_model"/>
+     <addaction name="actionPer_lineage_non_genetic_model"/>
      <addaction name="separator"/>
      <addaction name="actionCouple_extinction_and_speciation_rates"/>
     </widget>
@@ -1031,7 +1079,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Global evolving model</string>
+    <string>Global evolving genetic model</string>
    </property>
   </action>
   <action name="actionLocal_evolving_model">
@@ -1039,7 +1087,23 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Local evolving model</string>
+    <string>Per lineage genetic model</string>
+   </property>
+  </action>
+  <action name="actionPer_lineage_non_genetic_model">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Per lineage non-genetic model</string>
+   </property>
+  </action>
+  <action name="actionGlobal_evolving_non_genetic_model">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Global evolving non-genetic model</string>
    </property>
   </action>
  </widget>
