@@ -25,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //setup Qt UI
     ui->setupUi(this);
 
-    this->setWindowTitle(QString("MBL2017 v %1").arg(VERSION));
+    this->setWindowTitle(QString("SUMYE v%1").arg(VERSION));
 
     //setup an action group to make tree export actions mutually exclusive
     alignmentGroup = new QActionGroup(this);
@@ -91,7 +91,6 @@ void MainWindow::setupGraphs()
     if (ui->action_UseRDT->isChecked()) addGraph(graphcount++,"blue",TREE_MODE_RDT);
     if (ui->action_UseFDT->isChecked()) addGraph(graphcount++,"green",TREE_MODE_FDT);
     if (ui->action_UseIDT->isChecked()) addGraph(graphcount++,"red",TREE_MODE_IDT);
-    if (ui->action_UseRDTPLUS->isChecked()) addGraph(graphcount++,"darkblue",TREE_MODE_RDT2);
     if (ui->action_UseFDTPLUS->isChecked()) addGraph(graphcount++,"darkgreen",TREE_MODE_FDT2);
     if (ui->action_UseSCT->isChecked()) addGraph(graphcount++,"purple",TREE_MODE_SCT);
     if (ui->action_UseTCT->isChecked()) addGraph(graphcount++,"grey",TREE_MODE_TCT);
@@ -154,7 +153,7 @@ void MainWindow::outputproportionalTable(QString name,QList<int> *data,QList<int
         base+=(100/PROPORTIONAL_BINS);
     }
     out<<"----------------------------"<<"\n";
-    out<<"Sizes of saturated (100%) trees:\n";
+    out<<"Sizes of 'saturated' trees where all leaves fall into one genus (100% category above):\n";
     for (int i=0; i<satdata->count(); i++)
     out<<satdata->at(i)<<"\n";
     out<<"----------------------------"<<"\n";
@@ -206,9 +205,8 @@ void MainWindow::outputTable(QString name, QVector<double> x, QVector<double>y, 
 
 void MainWindow::proportionaltables(QList<QList<int>*> *data,QList<QList<int>*> *satdata)
 {
-    //do table output
-
-
+    //do table output for binned data
+    //if writing of combined file enabled - start this, and put in proportional data if that's called for
 
     if (ui->actionOutput_Genus_Size_to_Tree_Size_Tables->isChecked())
     {
@@ -243,7 +241,7 @@ void MainWindow::proportionaltables(QList<QList<int>*> *data,QList<QList<int>*> 
         }
         QStringList l;
         l.append("");
-        l.append("100% tree sizes");
+        l.append("Sizes of 'saturated' trees where all leaves fall into one genus (100% category above)");
         csvdatabins.append(l);
         for (int i=1; i<=TREE_MODE_MAX; i++)
             if (graphindices[i]!=-1) outputproportionalTable(TheSim->modeToString(i),data->at(i),satdata->at(i));
@@ -256,9 +254,13 @@ void MainWindow::proportionaltables(QList<QList<int>*> *data,QList<QList<int>*> 
         if (f.open(QIODevice::WriteOnly | QIODevice::Text))
         {
             QTextStream out(&f);
-            for (int i=0; i<csvdata.count(); i++)
+            if (ui->actionOutputFrequencyTables->isChecked())
             {
-                out<<csvdata[i].join(",")<<"\n";
+                out<<"-----frequency tables-----\n";
+                for (int i=0; i<csvdata.count(); i++)
+                {
+                    out<<csvdata[i].join(",")<<"\n";
+                }
             }
             if (ui->actionOutput_Genus_Size_to_Tree_Size_Tables->isChecked())
             {
@@ -351,7 +353,8 @@ void MainWindow::plotcounts(QList<QHash<int,int>*> *data, bool showtable)
     }
 
     ui->widget->xAxis->setRange(1, maxcount);
-    if (maxy>95) maxy=95;  ui->widget->yAxis->setRange(0, maxy+5);
+    if (maxy>95) maxy=95;
+    ui->widget->yAxis->setRange(0, maxy+5);
     ui->widget->legend->setVisible(true);
     ui->widget->setVisible(true);
     ui->widget->replot();
@@ -362,45 +365,54 @@ void MainWindow::outputmaxgenussizefile(QVector< QList<maxgenusdatapoint> > *dat
 {
     if (ui->actionOutput_max_genus_sizes_per_tree->isChecked())
     {
-        QString s=TheSim->filepath+"/"+ui->stub->text()+"_maxgenussizedata.csv";
-        QFile f(s);
-        if (f.open(QIODevice::WriteOnly | QIODevice::Text))
+    //first - onscreen version, and s
+    QString s;
+    int maxcount=0;
+    QTextStream out(&s);
+    out<<"Iteration,tree_size";
+    for (int i=1; i<=TREE_MODE_MAX; i++)
+    {
+        if ((*data)[i].count()>0) // there is data
+        {
+            out<<","<<TheSim->modeToShortString(i);
+            maxcount=(*data)[i].count(); //should all be the same I hope
+        }
+    }
+    out<<"\n";
+
+    for (int j=0; j<maxcount; j++)
+    {
+        out<<j;
+        bool first=true;
+        for (int i=1; i<=TREE_MODE_MAX; i++)
+        {
+            if ((*data)[i].count()>0) // there is data
+            {
+                if (first)
+                {
+                    out<<","<<(*data)[i].at(j).treesize;
+                    first=false;
+                }
+                out<<","<<(*data)[i].at(j).maxgenussize;
+            }
+        }
+        out<<"\n";
+    }
+    logtext("\n\n------------------------------\nMaximum genus sizes for each tree\n------------------------------\n"+s);
+
+    if (ui->actionCombine_Tables_into_File->isChecked())
+    {
+        QFile f(getCombinedTablesFileName());
+        if (f.open(QIODevice::Append | QIODevice::Text))
         {
             QTextStream out(&f);
-            int maxcount=0;
-            out<<"Iteration,tree_size";
-            for (int i=1; i<=TREE_MODE_MAX; i++)
-            {
-                if ((*data)[i].count()>0) // there is data
-                {
-                    out<<","<<TheSim->modeToShortString(i);
-                    maxcount=(*data)[i].count(); //should all be the same I hope
-                    qDebug()<<maxcount;
-                }
-            }
-            out<<"\n";
-
-            for (int j=0; j<maxcount; j++)
-            {
-                out<<j;
-                bool first=true;
-                for (int i=1; i<=TREE_MODE_MAX; i++)
-                {
-                    if ((*data)[i].count()>0) // there is data
-                    {
-                        if (first)
-                        {
-                            out<<","<<(*data)[i].at(j).treesize;
-                            first=false;
-                        }
-                        out<<","<<(*data)[i].at(j).maxgenussize;
-                    }
-                }
-                out<<"\n";
-            }
+            out<<"\n-----max genus size tables-----\n";
+            out<<s;
             f.close();
         }
-        else logtext(QString("Couldn't open file '%1' for writing").arg(s));
+        else logtext(QString("Couldn't open file '%1' for writing").arg(getCombinedTablesFileName()));
+
+    }
 
     }
 }
@@ -410,8 +422,13 @@ void MainWindow::outputmaxgenussizefile(QVector< QList<maxgenusdatapoint> > *dat
 /////////////////////////////////////////////////////
 
 
-void MainWindow::logtext(QString text)
+void MainWindow::logtext(QString text, int level)
 {
+    //level is level of detail.
+
+    //filter out verbose output
+    if (!(per_tree_output()) && level>0) return;
+
     //add string to log window
     ui->textEdit->append(text);
 }
@@ -464,6 +481,7 @@ void MainWindow::on_actionSet_Export_Folder_2_triggered()
 {
    QString d = QFileDialog::getExistingDirectory(this,"Folder for output");
    if (d!="") TheSim->filepath=d;
+   ui->OutputPath->setText(TheSim->filepath);
 }
 
 
@@ -527,44 +545,6 @@ void MainWindow::on_actionLog_scale_Y_axis_triggered()
 /////////////////////////////////////////////////////
 
 
-void MainWindow::log_identical_genomes(QString text)
-//part of the specific leaf count code. Used to log a per-tree identical genome count to a file
-{
-    QString s=TheSim->filepath+"/"+ui->stub->text()+"_identicals.txt";
-    QFile f(s);
-    if (f.open(QIODevice::Append | QIODevice::Text))
-    {
-        f.write((QString("%1\n").arg(text)).toLatin1());
-        f.close();
-    }
-
-}
-
-void MainWindow::do_with_matrix_trees(int iter, Lineage *rootlineage)
-{
-    //public, called by simulation. Exports the with matrix trees to file - not done
-    //per taxonomy, so in different function
-    if (ui->actionExport_Trees->isChecked()==false || ui->actionTNT_MrBayes->isChecked()==false) return; //nothing to do
-
-
-    QString s=TheSim->filepath+"/"+ui->stub->text()+"_batch.nex";
-    QFile f(s);
-    if (f.open(QIODevice::Append))
-    {
-        f.write(TheSim->dumpnex_with_matrix(rootlineage,iter).toLatin1());
-        f.close();
-    }
-    s=TheSim->filepath+"/"+ui->stub->text()+"_batch.tnt";
-    QFile f2(s);
-    if (f2.open(QIODevice::Append))
-    {
-        f2.write(TheSim->dumptnt_with_matrix(rootlineage,iter).toLatin1());
-        f2.close();
-    }
-    return;
-
-}
-
 void MainWindow::do_trees(int mode, int iter, Lineage *rootlineage)
 {
     //public, called by simulation. Export trees to file
@@ -573,8 +553,7 @@ void MainWindow::do_trees(int mode, int iter, Lineage *rootlineage)
 
     QString extension=".tre";
     QString iters;
-    iters.sprintf("%06ld",iter);
-    if (ui->actionTNT_MrBayes->isChecked()) iters.sprintf("%06ld",iter-1);
+    iters.sprintf("%06d",iter);
 
     if (ui->actionNewick->isChecked()) extension=".nwk";
     if (ui->actionPhyloXML->isChecked()) extension=".phyloxml";
@@ -587,7 +566,6 @@ void MainWindow::do_trees(int mode, int iter, Lineage *rootlineage)
         if (ui->actionNewick->isChecked()) f.write(TheSim->dumpnewick(rootlineage).toLatin1());
         if (ui->actionPhyloXML->isChecked()) f.write(TheSim->dumpphyloxml(rootlineage).toLatin1());
         if (ui->actionTNT_tre->isChecked()) f.write(TheSim->dumptnt(rootlineage).toLatin1());
-        if (ui->actionTNT_MrBayes->isChecked()) f.write(TheSim->dump_nex_alone(rootlineage).toLatin1());
         f.close();
     }
 }
@@ -690,17 +668,6 @@ int MainWindow::getSTTthreshold()
     return ui->threshold_stt->value();
 }
 
-int MainWindow::getRTDPLUSsplitthreshold()
-{
-    return ui->threshold_rdtplus_split->value();
-}
-
-int MainWindow::getRTDPLUSmergethreshold()
-{
-    return ui->threshold_rdtplus_merge->value();
-}
-
-
 int MainWindow::getFDTPLUSsplitthreshold()
 {
     return ui->threshold_fdt_split->value();
@@ -776,11 +743,9 @@ bool MainWindow::getTaxonomyTypeInUse(int mode)
    if (mode==TREE_MODE_UNCLASSIFIED) return ui->action_UseUnclassified->isChecked();
    if (mode==TREE_MODE_IDT) return ui->action_UseIDT->isChecked();
    if (mode==TREE_MODE_FDT2) return ui->action_UseFDTPLUS->isChecked();
-   if (mode==TREE_MODE_RDT2) return ui->action_UseRDTPLUS->isChecked();
    if (mode==TREE_MODE_SCT) return ui->action_UseSCT->isChecked();
    if (mode==TREE_MODE_TCT) return ui->action_UseTCT->isChecked();
    if (mode==TREE_MODE_STT) return ui->action_UseSTT->isChecked();
-   if (mode==TREE_MODE_TNTMB) return true; //bit of a bodge - but this always writes trees
    return false;
 }
 
@@ -826,11 +791,6 @@ void MainWindow::on_action_UseFDTPLUS_triggered()
     setupGraphs();
 }
 
-void MainWindow::on_action_UseRDTPLUS_triggered()
-{
-    setupGraphs();
-}
-
 void MainWindow::on_action_UseSCT_triggered()
 {
     setupGraphs();
@@ -853,7 +813,7 @@ void MainWindow::on_action_UseSTT_triggered()
 
 void MainWindow::on_actionAbout_triggered()
 {
-    QMessageBox::about(this,"About MBL plus","MBL plus - coding Mark Sutton, m.sutton@ic.ac.uk<br />Concepts and algorithms Mark Sutton, Julia Sigwart.");
+    QMessageBox::about(this,"About SUYMYE","SUMYE - developments from MBL2017 - coding Mark Sutton, m.sutton@ic.ac.uk<br />Concepts and algorithms Mark Sutton, Julia Sigwart.");
 }
 
 void MainWindow::on_action_UseUnclassified_triggered()
@@ -865,9 +825,13 @@ void MainWindow::on_action_UseUnclassified_triggered()
         ui->action_UseFDT->setChecked(false);
         ui->action_UseFDTPLUS->setChecked(false);
         ui->action_UseIDT->setChecked(false);
-        ui->action_UseRDTPLUS->setChecked(false);
         ui->action_UseRDT->setChecked(false);
         ui->action_UseSTT->setChecked(false);
         ui->action_UseTCT->setChecked(false);
     }
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    on_actionSet_Export_Folder_2_triggered();
 }

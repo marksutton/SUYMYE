@@ -10,7 +10,7 @@ class Lineage;
 #include <QStringList>
 #include "simulation.h"
 
-#define VERSION 3.0
+#define VERSION 3.1
 
 namespace Ui {
 class MainWindow;
@@ -23,12 +23,12 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     Simulation *TheSim;
 
     bool gotsomedata;
-    void logtext(QString text);
+    void logtext(QString text, int level=OUTPUT_QUIET);
     void setProgress(int current, int max);
     double getchanceextinct();
     double getchancespeciate();
@@ -62,8 +62,7 @@ public:
     int getextramutations();
     int getSTTthreshold();
     int getFDTPLUSsplitthreshold();
-    int getRTDPLUSmergethreshold();
-    int getRTDPLUSsplitthreshold();
+
     double getextinctionmodifier();
     double getspeciationmodifier();
     void proportionaltables(QList<QList<int> *> *data, QList<QList<int> *> *satdata);
@@ -74,11 +73,9 @@ public:
 
     QList<QStringList> csvdata,csvdatabins;
     void outputmaxgenussizefile(QVector<QList<maxgenusdatapoint> > *data);
-    void do_with_matrix_trees(int iter, Lineage *rootlineage);
     bool getCoupleRates();
     int getParameterMode();
     int get_precise_leaf_count();
-    void log_identical_genomes(QString text);
     double getspeciationchangeperstep();
     double getextinctionchangeperstep();
 public slots:
@@ -92,7 +89,6 @@ public slots:
     void on_action_UseFDT_triggered();
     void on_action_UseIDT_triggered();
     void on_action_UseFDTPLUS_triggered();
-    void on_action_UseRDTPLUS_triggered();
     void on_action_UseSCT_triggered();
     void on_action_UseRDT_triggered();
     void on_action_UseTCT_triggered();
@@ -101,6 +97,8 @@ public slots:
     void on_action_UseUnclassified_triggered();
 
     void on_actionLog_scale_Y_axis_triggered();
+
+    void on_pushButton_clicked();
 
 private:
     Ui::MainWindow *ui;

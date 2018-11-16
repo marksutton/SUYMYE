@@ -1236,18 +1236,6 @@ int Lineage::count_ones(int word, quint32 mask)
 }
 
 
-void Lineage::addstringgenomestoset(QSet<QString> *set)
-{
-    if (time_split!=-1) //split - recurse
-    {
-        daughter_lineage_A->addstringgenomestoset(set);
-        daughter_lineage_B->addstringgenomestoset(set);
-    }
-    else
-    set->insert(getcharactersasstring(current_characters));
-}
-
-
 QString Lineage::getcharactermatrix(bool root)
 {
     QString retval;

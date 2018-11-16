@@ -21,7 +21,7 @@ class Lineage
 public:
     qint64 id;
     int simple_id; //used for some tree dumps that want numbers 1-n with no gaps for extant species
-    Lineage(quint32 characters[], Lineage *parent, qint64 timestamp, quint32 initial_characters[]=(quint32*)0);
+    Lineage(quint32 characters[], Lineage *parent, qint64 timestamp, quint32 initial_characters[]=(quint32*)nullptr);
     ~Lineage();
     qint64 time_created;
     qint64 time_died;
@@ -71,7 +71,6 @@ public:
     Lineage *find_clade_with_precise_size(int preciseleafcount);
     int count_zeros(int word, quint32 mask);
     int count_ones(int word, quint32 mask);
-    void addstringgenomestoset(QSet<QString> *set);
     void random_walk_rates();
 private:
 

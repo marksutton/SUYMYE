@@ -42,8 +42,6 @@ int SCT_THRESHOLD;
 int TCT_THRESHOLD;
 int STT_THRESHOLD;
 int FDTPLUS_THRESHOLD;
-int RDTPLUS_SPLIT_THRESHOLD;
-int RDTPLUS_MERGE_THRESHOLD;
 
 double SPECIATION_MODIFIER;
 double EXTINCTION_MODIFIER;
@@ -76,8 +74,8 @@ Lineage *dummy_parameter_lineage;
 
 Simulation::Simulation()
 {
-    rootspecies=0;
-    crownroot=0;
+    rootspecies=nullptr;
+    crownroot=nullptr;
     TheSimGlobal=this;
     filepath="c:/";  //CHANGE THIS FOR NON-WINDOWS SYSTEMS!
 
@@ -92,20 +90,18 @@ Simulation::Simulation()
 
 Simulation::~Simulation()
 {
-
+    //destructor - do nothing
 }
 
 
 
 void Simulation::run(MainWindow *mainwin)
 {
-
-
-
     //performs a simulation run
-
     //keep pointer to main window instance
     mw=mainwin;
+
+
     std::default_random_engine generator;
     std::gamma_distribution<double> gd(GAMMA_ALPHA,GAMMA_BETA);
 
@@ -180,8 +176,6 @@ void Simulation::run(MainWindow *mainwin)
     SCT_THRESHOLD=mw->getSCTthreshold();
     TCT_THRESHOLD=mw->getTCTthreshold();
     FDTPLUS_THRESHOLD=mw->getFDTPLUSsplitthreshold();
-    RDTPLUS_SPLIT_THRESHOLD=mw->getRTDPLUSsplitthreshold();
-    RDTPLUS_MERGE_THRESHOLD=mw->getRTDPLUSmergethreshold();
 
     int preciseleafcount=mw->get_precise_leaf_count();
 
@@ -201,6 +195,17 @@ void Simulation::run(MainWindow *mainwin)
     QVector<quint32> saturation_array;
     saturation_array.fill(0,iterations*(CHARACTER_WORDS*32+1));
 
+
+    //first up - refuse to run if certain menu combinations selected
+    if (usefossils)
+    {
+        if (mw->getTaxonomyTypeInUse(TREE_MODE_FDT) || mw->getTaxonomyTypeInUse(TREE_MODE_FDT2) || mw->getTaxonomyTypeInUse(TREE_MODE_RDT))
+        {
+            mw->logtext("Error: taxonomy modes RDT, FDT and FDT+ are not compatible with the incorporation of extinct (fossil) leaves");
+            return;
+        }
+    }
+    mw->logtext("Starting simulation...");
     //run counts/totals
     int totalca=0; //count alive
     int totalce=0; //count extinct
@@ -208,20 +213,18 @@ void Simulation::run(MainWindow *mainwin)
     int actualtreecount=0;
     int actualiterations=0;
 
-    if (preciseleafcount) mw->log_identical_genomes("tree,identical_genomes");
-
     //main loop - iterate for specified number of trees
     for (int i=0; i<generations; i++)
     {
         actualiterations++;
-        dummy_parameter_lineage=0; //important - constructor will try to check it!
+        dummy_parameter_lineage=nullptr; //important - constructor will try to check it!
 
         if (parameter_mode==PARAMETER_MODE_GLOBAL)
         {
             quint32 dummycharacters[CHARACTER_WORDS];
             randomcharacters(dummycharacters); //set up characters for start
             //dummy lineage will be read for ext/speciation chance
-            dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
+            dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)nullptr,0,nullptr); //run with single species that lacks a parent, created at time step 0
         }
 
         if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
@@ -229,7 +232,7 @@ void Simulation::run(MainWindow *mainwin)
             quint32 dummycharacters[CHARACTER_WORDS];
             randomcharacters(dummycharacters); //set up characters for start
             //dummy lineage will be read for ext/speciation chance
-            dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
+            dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)nullptr,0,nullptr); //run with single species that lacks a parent, created at time step 0
 
             dummy_parameter_lineage->extinct_prob=CHANCE_EXTINCT_DOUBLE;
             dummy_parameter_lineage->speciate_prob=CHANCE_SPECIATE_DOUBLE;
@@ -280,16 +283,16 @@ void Simulation::run(MainWindow *mainwin)
         nextgenusnumber=1;
         nextid=0;
         currenttime=0;
-        if (rootspecies!=0) delete rootspecies; //delete any existing root species from previous iteration of main loop
-        if (crownroot!=0) delete crownroot; //delete any existing fossil free tree from previous iteration of main loop
-        crownroot=0;
+        if (rootspecies!=nullptr) delete rootspecies; //delete any existing root species from previous iteration of main loop
+        if (crownroot!=nullptr) delete crownroot; //delete any existing fossil free tree from previous iteration of main loop
+        crownroot=nullptr;
         //set up characters randomly
         quint32 startcharacters[CHARACTER_WORDS];
         randomcharacters(startcharacters);
 
 
         //create a root species
-        rootspecies=new Lineage(startcharacters,(Lineage *)0,0,0); //run with single species that lacks a parent, created at time step 0
+        rootspecies=new Lineage(startcharacters,(Lineage *)nullptr,0,nullptr); //run with single species that lacks a parent, created at time step 0
         rootspecies->extinct_prob=CHANCE_EXTINCT_DOUBLE;
         rootspecies->speciate_prob=CHANCE_SPECIATE_DOUBLE;
 
@@ -336,394 +339,335 @@ void Simulation::run(MainWindow *mainwin)
             //yes - log this
             QString so;
             QTextStream sout(&so);
-            sout<<"Leaf limit hit: Tree "<<i<<" ran for "<<j<<" iterations, hit "<<leafcount<<" leaves.";
-            mw->logtext(so+"\n");
+            sout<<i<<": Leaf limit hit: Tree ran for "<<j<<" iterations, reached "<<leafcount<<" leaves.";
+            mw->logtext(so,OUTPUT_VERBOSE);
             if (mw->throw_away_on_leaf_limit())
             {
-                if (mw->per_tree_output()) //if tree is to be discarded AND per tree output is on, log the discard
-                {
-                    QString out;
-                    out.sprintf("%d: Discarded (too many leaves)",actualiterations);
-                    mw->logtext(out);
-                }
+                mw->logtext(QString("%1: Discarded (too many leaves)").arg(actualiterations), OUTPUT_VERBOSE);
                 continue; //skip to next iteration of main loop
             }            
         }
 
-        if (preciseleafcount!=0) //cull to precise size if possible
+        Lineage* useroot; //root to use for analyses - normally rootspecies, but not if preciseleafcount is set
+
+        crownroot=rootspecies->strip_extinct((Lineage *)nullptr); //removes extinct tips
+        if (crownroot!=nullptr)
         {
-            crownroot=rootspecies->strip_extinct((Lineage *)0); //removes extinct tips
-            if (crownroot!=0)
+
+            crownroot->cull_dead_branches(); //merge single branch nodes
+
+            if (preciseleafcount!=0) //cull to precise size if possible
             {
-                crownroot->cull_dead_branches(); //merge single branch nodes
 
                 Lineage *preciseleafcountroot = crownroot->find_clade_with_precise_size(preciseleafcount);
                 if (preciseleafcountroot)
                 {
                     //found one!
-
-                    //check - how many uninformative characters - discard if this is not 0
-                    int unin=0;
-                    int maxz=0;
-                    int maxo=0;
-                    for (int i=0; i<CHARACTER_WORDS; i++)
-                    {
-                        quint32 mask=1;
-                        for (int j=0; j<32; j++)
-                        {
-                            int z=preciseleafcountroot->count_zeros(i,mask);
-                            int o=preciseleafcountroot->count_ones(i,mask);
-                            if (z>=(preciseleafcount-1)) unin++; //if all zeroes except 1 or 0 1's - uninformative
-                            if (o>=(preciseleafcount-1)) unin++; //if all ones except 0 or 1 0's - uninformative
-                            mask*=2;
-                        }
-                    }
-
-                    if (unin>0)
-                        mainwin->logtext("Discarding tree - contains one or more uninformative characters");
-                    else
-                    {
-
-
-
-                        actualtreecount++;
-
-                        //find out if there are any identical genomes in there
-                        QSet<QString> genomes;
-                        preciseleafcountroot->addstringgenomestoset(&genomes);
-                        QString identical_genome_string=QString("%1,%2").arg(actualtreecount-1).arg(2*(preciseleafcount-genomes.count()));
-                        mw->log_identical_genomes(identical_genome_string);
-
-                        nextsimpleIDnumber=0;
-                        preciseleafcountroot->dosimplenumbers(); //do simple numbering scheme
-                        mw->do_with_matrix_trees(actualtreecount, preciseleafcountroot);
-                        mw->do_trees(TREE_MODE_TNTMB,actualtreecount,preciseleafcountroot);
-                        mw->logtext(QString("Found subtree with length %1\n").arg(preciseleafcountroot->count_alive()));
-                    }
+                    useroot=preciseleafcountroot;
+                    crownroot=preciseleafcountroot; //both are the same precisely sizes clade
+                }
+                else
+                {
+                    mw->logtext(QString("%1: Discarded (no subtree of length %2)").arg(actualiterations).arg(preciseleafcount), OUTPUT_VERBOSE);
+                    continue; //next iteration
                 }
             }
-        }
-        else
-        {
-            //normal mode
-            if (mainwin->getSaturationNeeded()) DoSaturationData(rootspecies, iterations, &saturation_array);
+            else
+            {
+                useroot=rootspecies;
+            }
+
+            if (mainwin->getSaturationNeeded()) DoSaturationData(useroot, j, &saturation_array);
 
             //get count of how many exant, extinct and branched lineages descend from the root species
-            int ca=rootspecies->count_alive();
-            int ce=rootspecies->count_extinct();
-            int cb=rootspecies->count_branched();
+            int ca=useroot->count_alive();
+            int ce=useroot->count_extinct();
+            int cb=useroot->count_branched();
             totalca+=ca; //add to totals
             totalce+=ce;
             totalcb+=cb;
 
-            //log leaf count of tree if per-tree output is on
-            if (mw->per_tree_output())
+            //log leaf count
+            mw->logtext(QString("%1: extant leaves at end of run: %2").arg(actualiterations).arg(ca), OUTPUT_VERBOSE);
+
+
+            //If there is a tree, i.e. we have any extant descendents of the root species
+
+            actualtreecount++;
+
+            //Produce version with extinct stripped
+
+            nextsimpleIDnumber=0;
+            crownroot->dosimplenumbers(); //do simple numbering scheme
+
+            //Now go through the various taxonomy modes
+
+            //1. TREE_MODE_UNCLASSIFIED
+            mw->do_trees(TREE_MODE_UNCLASSIFIED,i,useroot); //handle the unclassified tree writing
+
+            if (usefossils) leafcount=ca+ce; else leafcount=ca;
+
+            //2. TREE_MODE_RDT
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_RDT))
             {
-                QString out;
-                out.sprintf("Iteration %d: extant leaves at end of run: %d",actualiterations,ca);
-                mw->logtext(out);
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+                //no need to clear classifications here - crownroot not yet used
+                RDT_genera(); //do RDT classification
+
+                int max=genera_data_report(TREE_MODE_RDT);
+                maxgenusdatapoint dp;
+                dp.maxgenussize=max;
+                dp.treesize=leafcount;
+                maxgenussize[TREE_MODE_RDT].append(dp);
+
+                mw->do_trees(TREE_MODE_RDT,i,useroot);
+
+                //No need to enforce monophyly - and not compatible with fossils - won't get this far with them turned on
             }
 
-
-            if (ca>0)
+            //3. TREE_MODE_FDT
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_FDT))
             {
-                //If there is a tree, i.e. we have any extant descendents of the root species
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+                crownroot->resetGenusLabels();
+                crownroot->genuslabels_distance(0,j); //do FDT classification
+                int max=genera_data_report(TREE_MODE_FDT);
+                maxgenusdatapoint dp;
+                dp.maxgenussize=max;
+                dp.treesize=leafcount;
+                maxgenussize[TREE_MODE_FDT].append(dp);
+                mw->do_trees(TREE_MODE_FDT,i,useroot);
+                //No need to enforce monophyly - and not compatible with fossils - won't get this far with them turned on
+            }
 
-                actualtreecount++;
+            //3b. TREE_MODE_FDT+
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_FDT2))
+            {
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+                crownroot->resetGenusLabels();
+                crownroot->genuslabels_fdtplus(0,j); //do FDT classification
+                int max=genera_data_report(TREE_MODE_FDT2);
+                maxgenusdatapoint dp;
+                dp.maxgenussize=max;
+                dp.treesize=leafcount;
+                maxgenussize[TREE_MODE_FDT2].append(dp);
+                mw->do_trees(TREE_MODE_FDT2,i,crownroot);
+                //This doesn't use fossils currently, and no need to enforce monophyly
+            }
 
+            //4. TREE_MODE_IDT
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_IDT))
+            {
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+                genusnumberidt=1;
 
-                //Produce version with extinct stripped
-                crownroot=rootspecies->strip_extinct((Lineage *)0); //removes extinct tips
-
-                if (crownroot!=0) crownroot->cull_dead_branches(); //merge single branch nodes
-
-                nextsimpleIDnumber=0;
-                crownroot->dosimplenumbers(); //do simple numbering scheme
-                mw->do_with_matrix_trees(i, crownroot);
-
-                //Now go through the various taxonomy modes
-
-                //1. TREE_MODE_UNCLASSIFIED
-                mw->do_trees(TREE_MODE_UNCLASSIFIED,i,rootspecies); //handle the unclassified tree writing
-
-                if (usefossils) leafcount=ca+ce; else leafcount=ca;
-
-                //2. TREE_MODE_RDT
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_RDT))
+                if (enforcemonophyly)
                 {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-                    //no need to clear classifications here - crownroot not yet used
-                    RDT_genera(); //do RDT classification
-
-                    int max=genera_data_report(TREE_MODE_RDT);
-                    maxgenusdatapoint dp;
-                    dp.maxgenussize=max;
-                    dp.treesize=leafcount;
-                    maxgenussize[TREE_MODE_RDT].append(dp);
-
-                    mw->do_trees(TREE_MODE_RDT,i,crownroot);
-
-                    //This doesn't use fossils currently, and no need to enforce monophyly
-                }
-
-                //2b. TREE_MODE_RDTPLUS
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_RDT2))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-                    crownroot->resetGenusLabels();
-                    RDTPLUS_genera(currenttime); //do RDT classification
-                    int max=genera_data_report(TREE_MODE_RDT2);
-                    maxgenusdatapoint dp;
-                    dp.maxgenussize=max;
-                    dp.treesize=leafcount;
-                    maxgenussize[TREE_MODE_RDT2].append(dp);
-
-                    mw->do_trees(TREE_MODE_RDT2,i,crownroot);
-
-                    //This doesn't use fossils currently, and no need to enforce monophyly
-                }
-
-                //3. TREE_MODE_FDT
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_FDT))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-                    crownroot->resetGenusLabels();
-                    crownroot->genuslabels_distance(0,j); //do FDT classification
-                    int max=genera_data_report(TREE_MODE_FDT);
-                    maxgenusdatapoint dp;
-                    dp.maxgenussize=max;
-                    dp.treesize=leafcount;
-                    maxgenussize[TREE_MODE_FDT].append(dp);
-                    mw->do_trees(TREE_MODE_FDT,i,crownroot);
-                    //This doesn't use fossils currently, and no need to enforce monophyly
-                }
-
-                //3b. TREE_MODE_FDT+
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_FDT2))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-                    crownroot->resetGenusLabels();
-                    crownroot->genuslabels_fdtplus(0,j); //do FDT classification
-                    int max=genera_data_report(TREE_MODE_FDT2);
-                    maxgenusdatapoint dp;
-                    dp.maxgenussize=max;
-                    dp.treesize=leafcount;
-                    maxgenussize[TREE_MODE_FDT2].append(dp);
-                    mw->do_trees(TREE_MODE_FDT2,i,crownroot);
-                    //This doesn't use fossils currently, and no need to enforce monophyly
-                }
-
-                //4. TREE_MODE_IDT
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_IDT))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-                    genusnumberidt=1;
-
-                    if (enforcemonophyly)
-                    {
-                        //uses slightly different algorithm
-
-                        if (usefossils) //use tree with extinct included
-                        {
-                            rootspecies->resetGenusLabels();
-                            rootspecies->genuslabels_IDTm(genusnumberidt,j); //do IDT classification
-                            int max=genera_data_report(TREE_MODE_IDT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_IDT].append(dp);
-                            mw->do_trees(TREE_MODE_IDT,i,rootspecies);
-                        }
-                        else
-                        {
-                            crownroot->resetGenusLabels();
-                            crownroot->genuslabels_IDTm(genusnumberidt,j); //do IDT classification
-                            int max=genera_data_report(TREE_MODE_IDT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_IDT].append(dp);
-                            mw->do_trees(TREE_MODE_IDT,i,crownroot);
-                        }
-                    }
-                    else
-                    {
-                        //without monophyly enforced
-                        if (usefossils) //use tree with extinct included
-                        {
-                            rootspecies->resetGenusLabels();
-                            rootspecies->genuslabels_IDT(genusnumberidt,j); //do IDT classification
-                            int max=genera_data_report(TREE_MODE_IDT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_IDT].append(dp);
-                            mw->do_trees(TREE_MODE_IDT,i,rootspecies);
-                        }
-                        else
-                        {
-                            crownroot->resetGenusLabels();
-                            crownroot->genuslabels_IDT(genusnumberidt,j); //do IDT classification
-                            int max=genera_data_report(TREE_MODE_IDT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_IDT].append(dp);
-                            mw->do_trees(TREE_MODE_IDT,i,crownroot);
-                        }
-                    }
-                }
-
-                //6. TREE_MODE_SCT //similarity characters
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_SCT))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-
-                    if (enforcemonophyly)
-                    {
-                        if (usefossils) //use tree with extinct included
-                        {
-                            rootspecies->resetGenusLabels();
-                            rootspecies->genuslabels_SCTm(genusnumberidt); //do SCT mono classification
-                            int max=genera_data_report(TREE_MODE_SCT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_SCT].append(dp);
-                            mw->do_trees(TREE_MODE_SCT,i,rootspecies);
-                        }
-                        else
-                        {
-                            crownroot->resetGenusLabels();
-                            crownroot->genuslabels_SCTm(genusnumberidt); //do SCT mono classification
-                            int max=genera_data_report(TREE_MODE_SCT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_SCT].append(dp);
-                            mw->do_trees(TREE_MODE_SCT,i,crownroot);
-                        }
-                    }
-                    else //monophyly not enforced
-                    {
-                        if (usefossils) //use tree with extinct included
-                        {
-                            rootspecies->resetGenusLabels();
-                            do_SCT(rootspecies);
-                            int max=genera_data_report(TREE_MODE_SCT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_SCT].append(dp);
-                            mw->do_trees(TREE_MODE_SCT,i,rootspecies);
-                        }
-                        else
-                        {
-                            crownroot->resetGenusLabels();
-                            do_SCT(crownroot);
-                            int max=genera_data_report(TREE_MODE_SCT);
-                            maxgenusdatapoint dp;
-                            dp.maxgenussize=max;
-                            dp.treesize=leafcount;
-                            maxgenussize[TREE_MODE_SCT].append(dp);
-                            mw->do_trees(TREE_MODE_SCT,i,crownroot);
-                        }
-                    }
-                }
-
-
-                //7. TREE_MODE_TCT //type species algorithm
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_TCT))
-                {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
+                    //uses slightly different algorithm
 
                     if (usefossils) //use tree with extinct included
                     {
-                        rootspecies->resetGenusLabels();
-                        do_TCT(rootspecies,enforcemonophyly);
-                        int max=genera_data_report(TREE_MODE_TCT);
+                        useroot->resetGenusLabels();
+                        useroot->genuslabels_IDTm(genusnumberidt,j); //do IDT classification
+                        int max=genera_data_report(TREE_MODE_IDT);
                         maxgenusdatapoint dp;
                         dp.maxgenussize=max;
                         dp.treesize=leafcount;
-                        maxgenussize[TREE_MODE_TCT].append(dp);
-                        mw->do_trees(TREE_MODE_TCT,i,rootspecies);
+                        maxgenussize[TREE_MODE_IDT].append(dp);
+                        mw->do_trees(TREE_MODE_IDT,i,useroot);
                     }
                     else
                     {
                         crownroot->resetGenusLabels();
-                        do_TCT(crownroot,enforcemonophyly);
-                        int max=genera_data_report(TREE_MODE_TCT);
+                        crownroot->genuslabels_IDTm(genusnumberidt,j); //do IDT classification
+                        int max=genera_data_report(TREE_MODE_IDT);
                         maxgenusdatapoint dp;
                         dp.maxgenussize=max;
                         dp.treesize=leafcount;
-                        maxgenussize[TREE_MODE_TCT].append(dp);
-                        mw->do_trees(TREE_MODE_TCT,i,crownroot);
+                        maxgenussize[TREE_MODE_IDT].append(dp);
+                        mw->do_trees(TREE_MODE_IDT,i,crownroot);
                     }
                 }
-
-                //9. TREE_MODE_STT //type species algorithm
-                if (mw->getTaxonomyTypeInUse(TREE_MODE_STT))
+                else
                 {
-                    //clear genus list
-                    if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
-                    genera.clear();
-
+                    //without monophyly enforced
                     if (usefossils) //use tree with extinct included
                     {
-                        rootspecies->resetGenusLabels();
-                        do_STT(rootspecies,enforcemonophyly);
-                        int max=genera_data_report(TREE_MODE_STT);
+                        useroot->resetGenusLabels();
+                        useroot->genuslabels_IDT(genusnumberidt,j); //do IDT classification
+                        int max=genera_data_report(TREE_MODE_IDT);
                         maxgenusdatapoint dp;
                         dp.maxgenussize=max;
                         dp.treesize=leafcount;
-                        maxgenussize[TREE_MODE_STT].append(dp);
-                        mw->do_trees(TREE_MODE_STT,i,rootspecies);
+                        maxgenussize[TREE_MODE_IDT].append(dp);
+                        mw->do_trees(TREE_MODE_IDT,i,useroot);
                     }
                     else
                     {
                         crownroot->resetGenusLabels();
-                        do_STT(crownroot,enforcemonophyly);
-                        int max=genera_data_report(TREE_MODE_STT);
+                        crownroot->genuslabels_IDT(genusnumberidt,j); //do IDT classification
+                        int max=genera_data_report(TREE_MODE_IDT);
                         maxgenusdatapoint dp;
                         dp.maxgenussize=max;
                         dp.treesize=leafcount;
-                        maxgenussize[TREE_MODE_STT].append(dp);
-                        mw->do_trees(TREE_MODE_STT,i,crownroot);
+                        maxgenussize[TREE_MODE_IDT].append(dp);
+                        mw->do_trees(TREE_MODE_IDT,i,crownroot);
                     }
                 }
-
-                mw->plotcounts(&counts,false); //plot the results
             }
+
+            //6. TREE_MODE_SCT //similarity characters
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_SCT))
+            {
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+
+                if (enforcemonophyly)
+                {
+                    if (usefossils) //use tree with extinct included
+                    {
+                        useroot->resetGenusLabels();
+                        useroot->genuslabels_SCTm(genusnumberidt); //do SCT mono classification
+                        int max=genera_data_report(TREE_MODE_SCT);
+                        maxgenusdatapoint dp;
+                        dp.maxgenussize=max;
+                        dp.treesize=leafcount;
+                        maxgenussize[TREE_MODE_SCT].append(dp);
+                        mw->do_trees(TREE_MODE_SCT,i,useroot);
+                    }
+                    else
+                    {
+                        crownroot->resetGenusLabels();
+                        crownroot->genuslabels_SCTm(genusnumberidt); //do SCT mono classification
+                        int max=genera_data_report(TREE_MODE_SCT);
+                        maxgenusdatapoint dp;
+                        dp.maxgenussize=max;
+                        dp.treesize=leafcount;
+                        maxgenussize[TREE_MODE_SCT].append(dp);
+                        mw->do_trees(TREE_MODE_SCT,i,crownroot);
+                    }
+                }
+                else //monophyly not enforced
+                {
+                    if (usefossils) //use tree with extinct included
+                    {
+                        useroot->resetGenusLabels();
+                        do_SCT(useroot);
+                        int max=genera_data_report(TREE_MODE_SCT);
+                        maxgenusdatapoint dp;
+                        dp.maxgenussize=max;
+                        dp.treesize=leafcount;
+                        maxgenussize[TREE_MODE_SCT].append(dp);
+                        mw->do_trees(TREE_MODE_SCT,i,useroot);
+                    }
+                    else
+                    {
+                        crownroot->resetGenusLabels();
+                        do_SCT(crownroot);
+                        int max=genera_data_report(TREE_MODE_SCT);
+                        maxgenusdatapoint dp;
+                        dp.maxgenussize=max;
+                        dp.treesize=leafcount;
+                        maxgenussize[TREE_MODE_SCT].append(dp);
+                        mw->do_trees(TREE_MODE_SCT,i,crownroot);
+                    }
+                }
+            }
+
+
+            //7. TREE_MODE_TCT //type species algorithm
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_TCT))
+            {
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+
+                if (usefossils) //use tree with extinct included
+                {
+                    useroot->resetGenusLabels();
+                    do_TCT(useroot,enforcemonophyly);
+                    int max=genera_data_report(TREE_MODE_TCT);
+                    maxgenusdatapoint dp;
+                    dp.maxgenussize=max;
+                    dp.treesize=leafcount;
+                    maxgenussize[TREE_MODE_TCT].append(dp);
+                    mw->do_trees(TREE_MODE_TCT,i,useroot);
+                }
+                else
+                {
+                    crownroot->resetGenusLabels();
+                    do_TCT(crownroot,enforcemonophyly);
+                    int max=genera_data_report(TREE_MODE_TCT);
+                    maxgenusdatapoint dp;
+                    dp.maxgenussize=max;
+                    dp.treesize=leafcount;
+                    maxgenussize[TREE_MODE_TCT].append(dp);
+                    mw->do_trees(TREE_MODE_TCT,i,crownroot);
+                }
+            }
+
+            //9. TREE_MODE_STT //type species algorithm
+            if (mw->getTaxonomyTypeInUse(TREE_MODE_STT))
+            {
+                //clear genus list
+                if (genera.count()>0)  qDeleteAll(genera); //delete all existing genera data structures
+                genera.clear();
+
+                if (usefossils) //use tree with extinct included
+                {
+                    useroot->resetGenusLabels();
+                    do_STT(useroot,enforcemonophyly);
+                    int max=genera_data_report(TREE_MODE_STT);
+                    maxgenusdatapoint dp;
+                    dp.maxgenussize=max;
+                    dp.treesize=leafcount;
+                    maxgenussize[TREE_MODE_STT].append(dp);
+                    mw->do_trees(TREE_MODE_STT,i,useroot);
+                }
+                else
+                {
+                    crownroot->resetGenusLabels();
+                    do_STT(crownroot,enforcemonophyly);
+                    int max=genera_data_report(TREE_MODE_STT);
+                    maxgenusdatapoint dp;
+                    dp.maxgenussize=max;
+                    dp.treesize=leafcount;
+                    maxgenussize[TREE_MODE_STT].append(dp);
+                    mw->do_trees(TREE_MODE_STT,i,crownroot);
+                }
+            }
+
+            mw->plotcounts(&counts,false); //plot the results
         }
+        else
+            mw->logtext(QString("%1: Discarded (no extant leaves at end of simulation)").arg(actualiterations), OUTPUT_VERBOSE);
         //should we stop?
         if (mw->correct_number_trees_wanted() && actualtreecount==generations) stopflag=true;
         if (stopflag) {generations=i; break;}
 
     }
 
+    mw->logtext("...Done!");
+
     //set progress bar to complete
-    mw->plotcounts(&counts,true); //plot the results with tables too - resets CSV
-    mw->proportionaltables(&proportional_counts,&saturated_tree_sizes);  // - also outputs csv
     mw->setProgress(generations,generations);
 
-    mw->outputmaxgenussizefile(&maxgenussize);
+    mw->plotcounts(&counts,true); //plot the results with basic frequency tables too - resets CSV
+
+    mw->proportionaltables(&proportional_counts,&saturated_tree_sizes);  //this also starts the output file and writes freq tables, prop tables
+
+    mw->outputmaxgenussizefile(&maxgenussize); //do the max genus stuff, appending to csv if needbe
 
     if (mainwin->getSaturationNeeded()) WriteSaturationData(iterations,&saturation_array,mainwin->getSaturationFileName());
-
 }
 
 
@@ -792,7 +736,7 @@ void Simulation::increment()
 {
     //one iteration of rootspecies
     currenttime++;
-    if (rootspecies!=0)
+    if (rootspecies!=nullptr)
     {
         rootspecies->iterate(currenttime); //will chain-iterate them all
     }
@@ -1059,7 +1003,7 @@ void Simulation::do_TCT(Lineage *root, bool enforcemonophyly)
 
 void Simulation::RDT_genera()
 {
-    if (crownroot==0) return;
+    if (crownroot==nullptr) return;
     //calculate genera using recursive RDT rules
 
     if (genera.count()>0) qDeleteAll(genera);
@@ -1077,7 +1021,7 @@ void Simulation::RDT_genera()
         {
             Lineage *sister=thisone->getsister();
 
-            if (sister==0) {continue;}
+            if (sister==nullptr) {continue;}
 
             if (sister->time_split==-1 && sister->genusnumber==0) //not split and must still be alive - so simple sister - though exclude if already labelled
             {
@@ -1099,7 +1043,7 @@ void Simulation::RDT_genera()
                     sister=g->rootnode->getsister();
 
 
-                    if (sister==0)
+                    if (sister==nullptr)
                     {
                         //this happens if we try to expand out past root node. We can't - just move on
                         break;
@@ -1143,97 +1087,6 @@ void Simulation::RDT_genera()
 
 
 }
-
-void Simulation::RDTPLUS_genera(int currenttime)
-{
-    if (crownroot==0) return;
-    //calculate genera using recursive RDTplus rules
-    //as RDT, but
-    //(a) any 2-species genera where MRCA depth>x, split
-    //(b) do not split any descendents where MRCA depth is y from present
-
-    QList<Lineage *>extantlist;
-    crownroot->getextantlist(&extantlist);
-
-    qint64 gnumber=1;
-
-    for (int i=0; i<extantlist.count(); i++)
-    {
-        Lineage *thisone=extantlist[i];
-        if (thisone->parent_lineage) //exclude root!
-        {
-            Lineage *sister=thisone->getsister();
-
-            if (sister==0) {continue;}
-
-            if (sister->time_split==-1 && sister->genusnumber==0 && (currenttime-sister->time_created)<=RDTPLUS_SPLIT_THRESHOLD) //not split and must still be alive - so simple sister - though exclude if already labelled
-                                //RDT+ - also exclue if MRCA depth is too deep
-            {
-                //simple monophyletic pair. Create as a genus.
-                Genus *g= new Genus;
-                g->id=gnumber;
-                g->species.append(thisone);
-                g->species.append(sister);
-                thisone->genusnumber=gnumber;
-                sister->genusnumber=gnumber;
-                g->rootnode=thisone->parent_lineage;
-                gnumber++;
-                genera.insert(g->id,g);
-
-                bool continueloop=true;
-                do
-                {
-                    //look at sister clade to this genus
-                    sister=g->rootnode->getsister();
-
-
-                    if (sister==0)
-                    {
-                        //this happens if we try to expand out past root node. We can't - just move on
-                        break;
-                    }
-
-                    int agegenusMRCA=currenttime-g->rootnode->time_split;
-                    int agesistergenusMRCA=currenttime-g->rootnode->time_created;
-                    bool rdtplusbodge=false;
-                    if ((currenttime-sister->time_created)<RDTPLUS_MERGE_THRESHOLD) rdtplusbodge=true; //RTD++ - merge if too shallow!)
-                    if (rdtplusbodge || (int)((double)agegenusMRCA/RDT_THRESHOLD)>=agesistergenusMRCA)
-                    {
-                        //passed the threshold cut off rule for depth - might be incorporatable
-                        if (sister->RDT_check(currenttime) || rdtplusbodge )
-                        {
-                            sister->RDT_incorporate(g);
-                            g->rootnode=g->rootnode->parent_lineage;
-                            if (g->rootnode==crownroot) continueloop=false;
-                        }
-                        else
-                            continueloop=false;
-                    }
-                    else
-                        continueloop=false;
-                }
-                while (continueloop);
-            }
-        }
-    }
-
-    //deal with remaining singletons
-    for (int i=0; i<extantlist.count(); i++)
-    {
-        if (extantlist[i]->genusnumber==0)
-        {
-            Genus *g= new Genus;
-            g->id=gnumber;
-            g->species.append(extantlist[i]);
-            extantlist[i]->genusnumber=gnumber;
-            gnumber++;
-            genera.insert(g->id,g);
-        }
-    }
-
-
-}
-
 
 int Simulation::get_random_int_set(QSet<int> *extant_unused)
 {
@@ -1287,7 +1140,7 @@ Lineage * Simulation::get_mrca(Lineage *l0, Lineage *l1)
 
     //shouldn't get here!
     qDebug()<<"INTERNAL ERROR: No MRCA found in Simulation::get_mrca";
-    return (Lineage *)0;
+    return (Lineage *)nullptr;
 }
 
 int Simulation::genera_data_report(int mode)
@@ -1311,10 +1164,10 @@ int Simulation::genera_data_report(int mode)
         int bin=(int) (proportion * (100/PROPORTIONAL_BINS));
         if (g->species.count()==leafcount)
         {
-            saturated_tree_sizes.at(mode)->append(leafcount);
-            bin=PROPORTIONAL_BINS; //make sure 100% is 100%
+            saturated_tree_sizes.at(mode)->append(leafcount); //store in list of trees where whole tree was one genus
+            bin=PROPORTIONAL_BINS; //point to correct (final) bin for 100%
         }
-        (*thispcounts)[bin]=thispcounts->at(bin)+1;
+        (*thispcounts)[bin]=thispcounts->at(bin)+1; //increment count in that bin
     }
 
     return max;
@@ -1385,11 +1238,9 @@ QString Simulation::modeToString(int mode)
     if (mode==TREE_MODE_UNCLASSIFIED) return "No Taxonomy";
     if (mode==TREE_MODE_IDT) return "Internal Distance Taxonomy (IDT)";
     if (mode==TREE_MODE_FDT2) return "Fixed Depth Taxonomy Plus (FDT+)";
-    if (mode==TREE_MODE_RDT2) return "Relative topDown taxonomy PlusPlus (RDT++)";
     if (mode==TREE_MODE_SCT) return "Similarity of Characters Taxonomy (SCT)";
     if (mode==TREE_MODE_TCT) return "Type-species Character Taxonomy (TCT)";
     if (mode==TREE_MODE_STT) return "Stratigraphic Type-species Taxonomy (STT)";
-    if (mode==TREE_MODE_TNTMB) return "TNT/MB .nex output";
     return "error-typenotfound";
 }
 
@@ -1400,71 +1251,10 @@ QString Simulation::modeToShortString(int mode)
     if (mode==TREE_MODE_UNCLASSIFIED) return "NoTax";
     if (mode==TREE_MODE_IDT) return "IDT";
     if (mode==TREE_MODE_FDT2) return "FDTPLUS";
-    if (mode==TREE_MODE_RDT2) return "RDTPLUS";
     if (mode==TREE_MODE_SCT) return "SCT";
     if (mode==TREE_MODE_TCT) return "TCT";
     if (mode==TREE_MODE_STT) return "STT";
-    if (mode==TREE_MODE_TNTMB) return "TNTMB";
     return "error-typenotfound";
-}
-
-QString Simulation::dumptnt_with_matrix(Lineage *rootlineage, int iter)
-{
-    QString ret;
-
-    //work out proper numbering system
-
-    QString n = QString("%1").arg(nextsimpleIDnumber-1);
-    int numberofdigits=n.length();
-    QString zerostring;
-    zerostring.sprintf(QString("%0"+QString("%1").arg(numberofdigits)+"d").toUtf8(),0);
-
-
-    ret+="xread\n";
-    ret+="'Written on "+QDateTime::currentDateTime().toString("ddd MMM d hh:mm:ss yyyy")+"'\n";
-    ret+=QString("%1 %2\n").arg(32*CHARACTER_WORDS).arg(nextsimpleIDnumber);
-    ret+=rootlineage->getcharactermatrix(false);
-    ret+=";\n\n";
-    ret+="hold 10000\n";
-    ret+="mult=tbr replic 1000 hold 1000;\n";
-    ret+=QString("export-treesim_%1_POUT.tre;\nxwipe;\n\n").arg(iter-1);
-    return ret;
-}
-
-QString Simulation::dumpnex_with_matrix(Lineage *rootlineage, int iter)
-{
-    QString ret;
-    QString n = QString("%1").arg(nextsimpleIDnumber);
-    int numberofdigits=n.length();
-    QString zerostring;
-    zerostring.sprintf(QString("%0"+QString("%1").arg(numberofdigits)+"d").toUtf8(),0);
-
-    ret+="#NEXUS\n";
-    ret+="[Written on "+QDateTime::currentDateTime().toString("ddd MMM d hh:mm:ss yyyy")+"]\n";
-    ret+=QString("\nBegin data;\nDimensions ntax=%2 nchar=%1;\n").arg(32*CHARACTER_WORDS).arg(nextsimpleIDnumber);
-    ret+="Format datatype=standard missing=? gap=-;\n\nMatrix\n";
-    ret+=rootlineage->getcharactermatrix(false); //not root - i.e. no outgroup
-    ret+=";\nEND;\n\n";
-    ret+="begin mrbayes;\n";
-    ret+="        set autoclose=yes nowarn=yes;\n";
-    ret+="        lset coding=variable rates=gamma;\n";
-    ret+="        \n";
-    ret+="        [mcmc settings]\n";
-    ret+="        set usebeagle=yes beagledevice=CPU beagleprecision=double beaglescaling=always beaglesse=no beagleopenmp=no;\n";
-    ret+="        \n";
-    ret+="        mcmcp temp=0.1 nchain=4 samplefreq=200 printfr=1000 nruns=2 append=no;\n";
-    ret+="        \n";
-    ret+=QString("        mcmcp filename=%1;\n").arg(iter-1);
-    ret+="        \n";
-    ret+="        mcmc ngen=2000000;\n";
-    ret+="        \n";
-    ret+="        sumt relburnin =yes burninfrac = 0.25; [set relative burnin to 25% for consensus tree]\n";
-    ret+="        \n";
-    ret+="        sump relburnin =yes burninfrac = 0.25; [set relative burnin to 25% for tree probabilities]\n";
-    ret+="        \n";
-    ret+="        end;\n";
-    ret+="        \n";
-    return ret;
 }
 
 QString Simulation::dumpnewick(Lineage *rootlineage)
@@ -1474,7 +1264,7 @@ QString Simulation::dumpnewick(Lineage *rootlineage)
 
 QString Simulation::dumptnt(Lineage *rootlineage)
 {
-    return "tread 'tree dumped from TreeModel in TNT format'\n"+rootlineage->tntstring()+"\nproc-;";
+    return "tread 'tree dumped from SUMYE in TNT format'\n"+rootlineage->tntstring()+"\nproc-;";
 }
 
 QString Simulation::dump_nex_alone(Lineage *rootlineage)
@@ -1494,7 +1284,6 @@ QString Simulation::dump_nex_alone(Lineage *rootlineage)
     QString tree=rootlineage->numbertree(1);
     //need to strip off last :number
 
-    //qDebug()<<"BEFORE"<<tree;
     for (int i=tree.length()-1; i>0; i--)
     {
         if (tree[i]==QChar(':'))
@@ -1503,7 +1292,6 @@ QString Simulation::dump_nex_alone(Lineage *rootlineage)
             break;
         }
     }
-    //qDebug()<<"AFTER"<<tree;
     ret+="tree tree1 =[&U]"+tree+";\n";
     ret+="END;\n";
     return ret;
@@ -1519,18 +1307,16 @@ QString Simulation::dumpphyloxml(Lineage *rootlineage)
 void Simulation::randomcharacters(quint32 *chars)
 //generates randomized characters for initial lineage
 {
-
     for (int i=0; i<CHARACTER_WORDS; i++)
     {
         chars[i]=GetRandom();
     }
-
 }
 
 
 
 /////////////////////////////////////////////////////
-//Functions or distance/saturation comparison studies
+//Functions for "saturation" comparison studies, looking at distance between taxa and genetic similarity
 /////////////////////////////////////////////////////
 
 void Simulation::WriteSaturationData(int iterations, QVector<quint32> *sat_array, QString fname)
@@ -1553,12 +1339,15 @@ void Simulation::WriteSaturationData(int iterations, QVector<quint32> *sat_array
         for (int j=0; j<CHARACTER_WORDS*32+1; j++)
             tot+=sat_array->at(i*(CHARACTER_WORDS*32+1)+j);
 
+        //tot is now total occurrences of that particular depth of split (i)
         if (tot==0)  tot=1; //avoid divide by 0 errors - will be 0/tot anyway, so doesn't matter what value it has
         for (int j=0; j<CHARACTER_WORDS*32+1; j++)
             outputarray[i*(CHARACTER_WORDS*32+1)+j]=((double)sat_array->at(i*(CHARACTER_WORDS*32+1)+j))/((double)tot);
+
+        //output array (same manual indexing as original) now has normalized 0-1 proportion of all possible similarities, i.e. a vertical line in output sums to 0
     }
 
-    //output. Reverse order, want highest value first for
+    //output. Reverse order, from max to min similarity. x is depth, from 1 to (iterations), y is similarity, from 1 to 0 - there will be same numb
     for (int j=CHARACTER_WORDS*32; j>=0; j--)
     for (int i=0; i<iterations; i++)
     {
@@ -1582,13 +1371,15 @@ void Simulation::DoSaturationData(Lineage *rootitem, int iterations, QVector<qui
     for (int i=0; i<(extantlist.count()-1); i++)
     {
         Lineage *l1=extantlist.at(i);
-        for (int j=i+1; j<extantlist.count(); j++)
+        for (int j=i+1; j<extantlist.count(); j++)  //pairwise comparison of all pairs in the extant list at end of sim
         {
             Lineage *l2=extantlist.at(j);
 
             Lineage *mrca=get_mrca(l1,l2);
-            int depth=iterations-mrca->time_split;
+            int depth=iterations-mrca->time_split;  //get age of split between the two
 
+
+            //calculate genetic similarity between the two
             int similarity=CHARACTER_WORDS*32;
             for (int ii=0; ii<CHARACTER_WORDS; ii++)
             {
@@ -1597,9 +1388,9 @@ void Simulation::DoSaturationData(Lineage *rootitem, int iterations, QVector<qui
                 similarity-=bitcounts[diff/65536];
             }
 
-            //store in the array
-            quint32 oldcount=sat_array->at(depth*(CHARACTER_WORDS*32+1)+similarity);
-            (*sat_array)[depth*(CHARACTER_WORDS*32+1)+similarity]=oldcount+1;
+            //Increment appropriate place in the array - which is actually a 2D array of depth of split and similarity, manually indexed (for speed I think)
+            int index = depth*(CHARACTER_WORDS*32+1)+similarity;
+            (*sat_array)[index]=sat_array->at(index)+1;
 
         }
     }

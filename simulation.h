@@ -4,16 +4,17 @@
 #include <QHash>
 #include <QVector>
 
+#define OUTPUT_QUIET 0
+#define OUTPUT_VERBOSE 1
+
 #define TREE_MODE_UNCLASSIFIED 0
 #define TREE_MODE_FDT 1
 #define TREE_MODE_RDT 2
-#define TREE_MODE_RDT2 3
-#define TREE_MODE_FDT2 4
-#define TREE_MODE_IDT 5
-#define TREE_MODE_SCT 6
-#define TREE_MODE_TCT 7
-#define TREE_MODE_STT 8
-#define TREE_MODE_TNTMB 9 //just for the TNT/MrBayes mode - internal only
+#define TREE_MODE_FDT2 3
+#define TREE_MODE_IDT 4
+#define TREE_MODE_SCT 5
+#define TREE_MODE_TCT 6
+#define TREE_MODE_STT 7
 
 #define CHARACTER_MODE_SFM 0
 #define CHARACTER_MODE_SGM 1
@@ -28,7 +29,7 @@
 #define PARAMETER_MODE_GLOBAL_NON_GENETIC 5
 
 //Define below for TREE_MODE_MAX should be the max value used above
-#define TREE_MODE_MAX 8
+#define TREE_MODE_MAX 7
 
 #define PROPORTIONAL_BINS 20 //100/this must be integral. So 10, 20, 25, 50 probably. Actually have this+1 bins - there is one for 100%
 
@@ -70,8 +71,6 @@ public:
     QString modeToShortString(int mode);
     int distancebetween(quint32 chars1[], quint32 chars2[]);
     void setFourierChances(double *a, double *b, double *c, quint32 *chance_array);
-    QString dumpnex_with_matrix(Lineage *rootlineage, int iter);
-    QString dumptnt_with_matrix(Lineage *rootlineage, int iter);
     double gaussian_cdf(double x);
     double gaussian_pdf(double x);
     QString dump_nex_alone(Lineage *rootlineage);
@@ -90,7 +89,6 @@ private:
     void do_SCT(Lineage *root);
     void do_TCT(Lineage *root, bool enforcemonophyly);
     void do_STT(Lineage *root, bool enforcemonophyly);
-    void RDTPLUS_genera(int currenttime);
 };
 
 struct maxgenusdatapoint
