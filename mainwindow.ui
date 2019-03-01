@@ -34,15 +34,44 @@
            <enum>QFrame::Raised</enum>
           </property>
           <layout class="QGridLayout" name="gridLayout">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>Extinction probability</string>
+           <item row="5" column="4">
+            <widget class="QSpinBox" name="threshold_tct">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>4</number>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="extinctchance">
+           <item row="13" column="0">
+            <widget class="QLabel" name="label_15">
+             <property name="text">
+              <string>Extra speciation mutates</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QDoubleSpinBox" name="ExtinctionChangePerStep">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.001000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QDoubleSpinBox" name="speciationmodifier">
              <property name="decimals">
               <number>4</number>
              </property>
@@ -53,19 +82,32 @@
               <double>0.001000000000000</double>
              </property>
              <property name="value">
-              <double>0.045000000000000</double>
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>
-           <item row="0" column="3">
-            <widget class="QLabel" name="label_9">
+           <item row="2" column="3">
+            <widget class="QLabel" name="label_19">
              <property name="text">
-              <string>FDT cut-off (time increments)</string>
+              <string>FDT+ split threshold</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="4">
-            <widget class="QSpinBox" name="threshold_abs">
+           <item row="9" column="1">
+            <widget class="QSpinBox" name="precise_leaf_count">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>5000</number>
+             </property>
+             <property name="value">
+              <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="4">
+            <widget class="QSpinBox" name="threshold_stt">
              <property name="minimum">
               <number>1</number>
              </property>
@@ -77,33 +119,37 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>Speciation probability</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="speciatechance">
-             <property name="decimals">
-              <number>4</number>
+           <item row="8" column="1" colspan="2">
+            <widget class="QSpinBox" name="maxleaves">
+             <property name="minimum">
+              <number>1</number>
              </property>
              <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
+              <number>1000000</number>
              </property>
              <property name="value">
-              <double>0.055000000000000</double>
+              <number>5000</number>
              </property>
             </widget>
            </item>
-           <item row="1" column="3">
-            <widget class="QLabel" name="label_4">
+           <item row="7" column="0">
+            <widget class="QLabel" name="label_7">
              <property name="text">
-              <string>RDT threshold</string>
+              <string>Trees to run</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Extinction probability</string>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="3">
+            <widget class="QLabel" name="label_13">
+             <property name="text">
+              <string>Filename stub</string>
              </property>
             </widget>
            </item>
@@ -123,14 +169,66 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_6">
+           <item row="4" column="4">
+            <widget class="QSpinBox" name="threshold_sct">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>3</number>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="3">
+            <widget class="QLabel" name="label_11">
              <property name="text">
-              <string>Time increments per tree</string>
+              <string>SCT threshold</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QDoubleSpinBox" name="extinctchance">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.045000000000000</double>
              </property>
             </widget>
            </item>
            <item row="2" column="1">
+            <widget class="QDoubleSpinBox" name="extinctionmodifier">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QLabel" name="label_9">
+             <property name="text">
+              <string>FDT cut-off (time increments)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
             <widget class="QSpinBox" name="time_increments">
              <property name="minimum">
               <number>1</number>
@@ -143,10 +241,56 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="3">
-            <widget class="QLabel" name="label_19">
+           <item row="1" column="1">
+            <widget class="QDoubleSpinBox" name="speciatechance">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.055000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="QLabel" name="label_8">
              <property name="text">
-              <string>FDT+ split threshold</string>
+              <string>Maximum leaf count</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="4">
+            <widget class="QSpinBox" name="threshold_abs">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>500</number>
+             </property>
+             <property name="value">
+              <number>40</number>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_20">
+             <property name="text">
+              <string>Extinction envelope</string>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="4">
+            <widget class="QLineEdit" name="stub"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Speciation probability</string>
              </property>
             </widget>
            </item>
@@ -163,15 +307,73 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_8">
+           <item row="1" column="3">
+            <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Maximum leaf count</string>
+              <string>RDT threshold</string>
              </property>
             </widget>
            </item>
-           <item row="3" column="1" colspan="2">
-            <widget class="QSpinBox" name="maxleaves">
+           <item row="6" column="0">
+            <widget class="QLabel" name="label_6">
+             <property name="text">
+              <string>Time increments per tree</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_21">
+             <property name="text">
+              <string>Speciation envelope</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="label_24">
+             <property name="text">
+              <string>Speciation change per step</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QDoubleSpinBox" name="SpeciationChangePerStep">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.001000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Mutation probability</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="3">
+            <widget class="QLabel" name="label_16">
+             <property name="text">
+              <string>STT threshold (time increments)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="3">
+            <widget class="QLabel" name="label_12">
+             <property name="text">
+              <string>TCT/STT threshold</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1">
+            <widget class="QSpinBox" name="generations">
              <property name="minimum">
               <number>1</number>
              </property>
@@ -179,7 +381,66 @@
               <number>1000000</number>
              </property>
              <property name="value">
-              <number>5000</number>
+              <number>500</number>
+             </property>
+            </widget>
+           </item>
+           <item row="13" column="1">
+            <widget class="QSpinBox" name="extramutates">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>1000</number>
+             </property>
+             <property name="value">
+              <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="1">
+            <widget class="QDoubleSpinBox" name="mutatechancevariation">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.060000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="0">
+            <widget class="QLabel" name="label_14">
+             <property name="text">
+              <string>Mutation envelope</string>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="1">
+            <widget class="QDoubleSpinBox" name="mutatechance">
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.060000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_23">
+             <property name="text">
+              <string>Extinction change per step</string>
              </property>
             </widget>
            </item>
@@ -203,232 +464,14 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="label_7">
-             <property name="text">
-              <string>Trees to run</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="1" colspan="2">
-            <widget class="QSpinBox" name="generations">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>1000000</number>
-             </property>
-             <property name="value">
-              <number>500</number>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="3">
-            <widget class="QLabel" name="label_11">
-             <property name="text">
-              <string>SCT threshold</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="4">
-            <widget class="QSpinBox" name="threshold_sct">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>3</number>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0">
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>Mutate chance</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="1">
-            <widget class="QDoubleSpinBox" name="mutatechance">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.060000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="3">
-            <widget class="QLabel" name="label_12">
-             <property name="text">
-              <string>TCT/STT threshold</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="4">
-            <widget class="QSpinBox" name="threshold_tct">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>4</number>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="0">
-            <widget class="QLabel" name="label_14">
-             <property name="text">
-              <string>Mutate chance varation</string>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="1">
-            <widget class="QDoubleSpinBox" name="mutatechancevariation">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.060000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="3">
-            <widget class="QLabel" name="label_16">
-             <property name="text">
-              <string>STT threshold (time increments)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="4">
-            <widget class="QSpinBox" name="threshold_stt">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>500</number>
-             </property>
-             <property name="value">
-              <number>40</number>
-             </property>
-            </widget>
-           </item>
-           <item row="7" column="0">
-            <widget class="QLabel" name="label_15">
-             <property name="text">
-              <string>Extra speciation mutates</string>
-             </property>
-            </widget>
-           </item>
-           <item row="7" column="1">
-            <widget class="QSpinBox" name="extramutates">
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>1000</number>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
-            </widget>
-           </item>
-           <item row="8" column="0">
-            <widget class="QLabel" name="label_20">
-             <property name="text">
-              <string>Extinction envelope</string>
-             </property>
-            </widget>
-           </item>
-           <item row="8" column="1">
-            <widget class="QDoubleSpinBox" name="extinctionmodifier">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.000000000000000</double>
-             </property>
-            </widget>
-           </item>
            <item row="9" column="0">
-            <widget class="QLabel" name="label_23">
+            <widget class="QLabel" name="label_22">
              <property name="text">
-              <string>Extinction change per step</string>
+              <string>Precise leaf count (0=any)</string>
              </property>
             </widget>
            </item>
-           <item row="9" column="1">
-            <widget class="QDoubleSpinBox" name="ExtinctionChangePerStep">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>0.100000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.001000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="9" column="3">
-            <widget class="QLabel" name="label_13">
-             <property name="text">
-              <string>Filename stub</string>
-             </property>
-            </widget>
-           </item>
-           <item row="9" column="4">
-            <widget class="QLineEdit" name="stub"/>
-           </item>
-           <item row="10" column="0">
-            <widget class="QLabel" name="label_21">
-             <property name="text">
-              <string>Speciation envelope</string>
-             </property>
-            </widget>
-           </item>
-           <item row="10" column="1">
-            <widget class="QDoubleSpinBox" name="speciationmodifier">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="10" column="2" colspan="2">
+           <item row="11" column="3">
             <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
               <widget class="QLabel" name="label_17">
@@ -446,51 +489,8 @@
              </item>
             </layout>
            </item>
-           <item row="10" column="4">
+           <item row="11" column="4">
             <widget class="QLineEdit" name="OutputPath"/>
-           </item>
-           <item row="11" column="0">
-            <widget class="QLabel" name="label_24">
-             <property name="text">
-              <string>Speciation change per step</string>
-             </property>
-            </widget>
-           </item>
-           <item row="11" column="1">
-            <widget class="QDoubleSpinBox" name="SpeciationChangePerStep">
-             <property name="decimals">
-              <number>4</number>
-             </property>
-             <property name="maximum">
-              <double>0.100000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.001000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="12" column="0">
-            <widget class="QLabel" name="label_22">
-             <property name="text">
-              <string>Precise leaf count (0=any)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="12" column="1">
-            <widget class="QSpinBox" name="precise_leaf_count">
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>5000</number>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
-            </widget>
            </item>
           </layout>
          </widget>
@@ -557,6 +557,7 @@
     </property>
     <addaction name="actionStart"/>
     <addaction name="actionStop"/>
+    <addaction name="actionSet_Export_Folder_2"/>
     <addaction name="separator"/>
     <addaction name="actionChart_to_PDF"/>
     <addaction name="separator"/>
@@ -576,7 +577,6 @@
     </widget>
     <addaction name="actionExport_Trees"/>
     <addaction name="menuExport_Format"/>
-    <addaction name="actionSet_Export_Folder_2"/>
    </widget>
    <widget class="QMenu" name="menuMoe">
     <property name="title">
@@ -609,11 +609,12 @@
       <string>Speciation/Extinction rate variation</string>
      </property>
      <addaction name="actionNone_fixed"/>
-     <addaction name="actionVarying_Tree_Parameters"/>
      <addaction name="actionGlobal_evolving_model"/>
      <addaction name="actionLocal_evolving_model"/>
      <addaction name="actionGlobal_evolving_non_genetic_model"/>
      <addaction name="actionPer_lineage_non_genetic_model"/>
+     <addaction name="actionCombined_evolving_non_genetic_model"/>
+     <addaction name="actionRates_from_CSV_file"/>
      <addaction name="separator"/>
      <addaction name="actionCouple_extinction_and_speciation_rates"/>
     </widget>
@@ -979,7 +980,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Global gamma model</string>
+    <string>Global gamma model [NOT IMPLEMENTED]</string>
    </property>
   </action>
   <action name="actionLog_scale_Y_axis">
@@ -1036,6 +1037,22 @@
    </property>
    <property name="text">
     <string>Global evolving non-genetic model</string>
+   </property>
+  </action>
+  <action name="actionCombined_evolving_non_genetic_model">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Combined non-genetic model</string>
+   </property>
+  </action>
+  <action name="actionRates_from_CSV_file">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Rates from CSV file... [TODO]</string>
    </property>
   </action>
  </widget>

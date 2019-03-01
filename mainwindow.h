@@ -100,6 +100,8 @@ public slots:
 
     void on_pushButton_clicked();
 
+    void on_OutputPath_textChanged(const QString &arg1);
+
 private:
     Ui::MainWindow *ui;
 

@@ -13,8 +13,7 @@
 #include "math.h"
 #include <random>
 
-#define GAMMA_ALPHA 1
-#define GAMMA_BETA .05
+#define M_PI 3.14159
 
 /////////////////////////////////////////////////////
 //Simulation class - single-instance class to manage simulation
@@ -103,7 +102,6 @@ void Simulation::run(MainWindow *mainwin)
 
 
     std::default_random_engine generator;
-    std::gamma_distribution<double> gd(GAMMA_ALPHA,GAMMA_BETA);
 
     stopflag=false;
     rfilepoint=0;
@@ -189,7 +187,7 @@ void Simulation::run(MainWindow *mainwin)
     bool usefossils=mw->getIncludeFossils();
     bool enforcemonophyly=mw->getEnforceMonophyly();
     parameter_mode=mw->getParameterMode();
-    if ((parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL || parameter_mode==PARAMETER_MODE_LOCAL) && (SPECIATION_MODIFIER<0.00001 && EXTINCTION_MODIFIER<0.00001))
+    if ((parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_COMBINED_NON_GENETIC ||parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL || parameter_mode==PARAMETER_MODE_LOCAL) && (SPECIATION_MODIFIER<0.00001 && EXTINCTION_MODIFIER<0.00001))
             parameter_mode=PARAMETER_MODE_FIXED; //if envelopes aren't set, just make it fixed
 
     QVector<quint32> saturation_array;
@@ -227,7 +225,7 @@ void Simulation::run(MainWindow *mainwin)
             dummy_parameter_lineage=new Lineage(dummycharacters,(Lineage *)nullptr,0,nullptr); //run with single species that lacks a parent, created at time step 0
         }
 
-        if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
+        if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode== PARAMETER_MODE_COMBINED_NON_GENETIC)
         {
             quint32 dummycharacters[CHARACTER_WORDS];
             randomcharacters(dummycharacters); //set up characters for start
@@ -237,9 +235,7 @@ void Simulation::run(MainWindow *mainwin)
             dummy_parameter_lineage->extinct_prob=CHANCE_EXTINCT_DOUBLE;
             dummy_parameter_lineage->speciate_prob=CHANCE_SPECIATE_DOUBLE;
             //in this mode we are going to random walk extinction/speciation - so we set them to the specified start point
-
         }
-
 
         //sort out mutation mode - done for each tree.
         character_mutation_mode=mw->getCharacterMutationMode();
@@ -303,14 +299,10 @@ void Simulation::run(MainWindow *mainwin)
 
         for (j=0; j<iterations; j++)
         {
-            if (parameter_mode==PARAMETER_MODE_GAMMA)
+            if (parameter_mode==PARAMETER_MODE_CSV)
             {
-                //select a new rate pair
+                //TODO
 
-                CHANCE_EXTINCT_DOUBLE=qBound(0.0,gd(generator),.495);
-                if (COUPLE_RATES) CHANCE_SPECIATE_DOUBLE=CHANCE_EXTINCT_DOUBLE+0.01;
-                else
-                    CHANCE_SPECIATE_DOUBLE=qBound(0.0,gd(generator),.495)+0.01;
             }
 
             if (parameter_mode==PARAMETER_MODE_GLOBAL)
@@ -319,7 +311,7 @@ void Simulation::run(MainWindow *mainwin)
                 dummy_parameter_lineage->domutation();
             }
 
-            if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC)
+            if (parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_COMBINED_NON_GENETIC)
             {
                 //do a mutation for the dummy parameter lineage
                 dummy_parameter_lineage->random_walk_rates();

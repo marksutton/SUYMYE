@@ -25,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //setup Qt UI
     ui->setupUi(this);
 
-    this->setWindowTitle(QString("SUMYE v%1").arg(VERSION));
+    this->setWindowTitle(QString("SUTME v%1").arg(VERSION));
 
     //setup an action group to make tree export actions mutually exclusive
     alignmentGroup = new QActionGroup(this);
@@ -48,10 +48,10 @@ MainWindow::MainWindow(QWidget *parent) :
     parameterGroup->addAction(ui->actionGlobal_evolving_model);
     parameterGroup->addAction(ui->actionLocal_evolving_model);
     parameterGroup->addAction(ui->actionNone_fixed);
-    parameterGroup->addAction(ui->actionVarying_Tree_Parameters);
+    parameterGroup->addAction(ui->actionCombined_evolving_non_genetic_model);
     parameterGroup->addAction(ui->actionGlobal_evolving_non_genetic_model);
     parameterGroup->addAction(ui->actionPer_lineage_non_genetic_model);
-    parameterGroup->addAction(ui->actionVarying_Tree_Parameters);
+    parameterGroup->addAction(ui->actionRates_from_CSV_file);
     ui->actionNone_fixed->setChecked(true);
 
     //create a simulation opject
@@ -728,10 +728,11 @@ int MainWindow::getParameterMode()
 {
     if (ui->actionGlobal_evolving_model->isChecked()) return PARAMETER_MODE_GLOBAL;
     if (ui->actionLocal_evolving_model->isChecked()) return PARAMETER_MODE_LOCAL;
-    if (ui->actionVarying_Tree_Parameters->isChecked()) return PARAMETER_MODE_GAMMA;
+    if (ui->actionCombined_evolving_non_genetic_model->isChecked()) return PARAMETER_MODE_COMBINED_NON_GENETIC;
     if (ui->actionNone_fixed->isChecked()) return PARAMETER_MODE_FIXED;
     if (ui->actionPer_lineage_non_genetic_model->isChecked()) return PARAMETER_MODE_LOCAL_NON_GENETIC;
     if (ui->actionGlobal_evolving_non_genetic_model->isChecked()) return PARAMETER_MODE_GLOBAL_NON_GENETIC;
+    if (ui->actionRates_from_CSV_file->isChecked()) return PARAMETER_MODE_CSV;
 
     return PARAMETER_MODE_FIXED; // a default
 }
@@ -813,7 +814,7 @@ void MainWindow::on_action_UseSTT_triggered()
 
 void MainWindow::on_actionAbout_triggered()
 {
-    QMessageBox::about(this,"About SUYMYE","SUMYE - developments from MBL2017 - coding Mark Sutton, m.sutton@ic.ac.uk<br />Concepts and algorithms Mark Sutton, Julia Sigwart.");
+    QMessageBox::about(this,"About SUTME","SUTME - developments from MBL2017 - coding Mark Sutton, m.sutton@ic.ac.uk<br />Concepts and algorithms Mark Sutton, Julia Sigwart.");
 }
 
 void MainWindow::on_action_UseUnclassified_triggered()
@@ -834,4 +835,9 @@ void MainWindow::on_action_UseUnclassified_triggered()
 void MainWindow::on_pushButton_clicked()
 {
     on_actionSet_Export_Folder_2_triggered();
+}
+
+void MainWindow::on_OutputPath_textChanged(const QString &arg1)
+{
+    TheSim->filepath=ui->OutputPath->text();
 }

@@ -203,10 +203,11 @@ void Lineage::calculate_extinction_and_speciation()
 //such that min is (base-modifier), max is (base+modifier). Clamp to 0-1 as well
 {
 
-    if (parameter_mode==PARAMETER_MODE_FIXED || parameter_mode==PARAMETER_MODE_GAMMA)
+    if (parameter_mode==PARAMETER_MODE_FIXED) return;
+
+    if (parameter_mode==PARAMETER_MODE_CSV)
     {
-        extinct_prob=CHANCE_EXTINCT_DOUBLE;
-        speciate_prob=CHANCE_SPECIATE_DOUBLE;
+        //TODO
         return;
     }
 
@@ -222,6 +223,14 @@ void Lineage::calculate_extinction_and_speciation()
         speciate_prob=dummy_parameter_lineage->speciate_prob;
         extinct_prob=dummy_parameter_lineage->extinct_prob;
     }
+
+    if (parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_COMBINED_NON_GENETIC)
+    //random walk my rates - do for local AND combined. Actual addition of dummy to mine done elsewhere
+    {
+        random_walk_rates();
+        return;
+    }
+
 
     if (parameter_mode==PARAMETER_MODE_LOCAL)
     //genetic control of parameters
@@ -332,14 +341,26 @@ void Lineage::iterate(qint64 timestamp)
     //if (parent_lineage!=nullptr)
     //    if (parent_lineage->id%100==0) qDebug()<<"OFFSPRING OF CORE"<<timestamp<<id<<" ext "<<extinct_prob<< " spec "<<speciate_prob;
 
-    if (rdouble<extinct_prob) //lineage went extinct
+    double use_extinct_prob = extinct_prob;
+    double use_speciation_prob = speciate_prob;
+
+    if (parameter_mode==PARAMETER_MODE_COMBINED_NON_GENETIC && dummy_parameter_lineage!=nullptr)
+    {
+        use_extinct_prob += dummy_parameter_lineage->extinct_prob;
+        use_speciation_prob += dummy_parameter_lineage->speciate_prob;
+    }
+
+    //qDebug()<<" Combined rates E: local:"<<extinct_prob<<" global:"<<dummy_parameter_lineage->extinct_prob<<" total:"<<use_extinct_prob;
+    //qDebug()<<" Combined rates S: local:"<<speciate_prob<<" global:"<<dummy_parameter_lineage->speciate_prob<<" total:"<<use_speciation_prob;
+
+    if (rdouble<use_extinct_prob) //lineage went extinct
     {
         TheSimGlobal->leafcount--;
         time_died=timestamp; //record when this happened
         return;
     }
 
-    if (rdouble<(speciate_prob+extinct_prob)) //lineage speciated
+    if (rdouble<(use_speciation_prob+use_extinct_prob)) //lineage speciated
     {
         TheSimGlobal->leafcount++;
         time_split=timestamp; //record when this happened
