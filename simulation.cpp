@@ -26,6 +26,7 @@
 
 Simulation *TheSimGlobal;
 QHash<qint64,Genus*> genera;
+QVector<csvdatapoint> CSV_datapoints;
 int CHANCE_EXTINCT;
 int CHANCE_SPECIATE;
 double CHANCE_SPECIATE_DOUBLE, CHANCE_EXTINCT_DOUBLE;
@@ -67,6 +68,7 @@ int bitcounts[65536]; //bitcount array - for each possible 16 bit word, how many
 
 Lineage *dummy_parameter_lineage;
 
+
 /////////////////////////////////////////////////////
 //Constructor/Destructor and run
 /////////////////////////////////////////////////////
@@ -93,12 +95,58 @@ Simulation::~Simulation()
 }
 
 
+bool Simulation::readCSV(QString filename)
+{
+    QFile f(filename);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
+    int linecount=0;
+    while (!f.atEnd())
+    {
+      QByteArray line = f.readLine();
+      if (line.length()>4) //looks like real data
+      {
+          QString sline(line); //make a QString
+          QStringList sline_split = sline.split(",");
+          if (sline_split.count()!=3) return false; //ERROR - line found without 3 datapoints
+          csvdatapoint csvdp;
+          bool ok;
+          csvdp.time = sline_split[0].toInt(&ok);
+          if (ok==false) return false; //ERROR in timestamp
+          csvdp.speciation = sline_split[1].toDouble(&ok);
+          if (ok==false) return false; //ERROR in timestamp
+          csvdp.extinction = sline_split[2].toDouble(&ok);
+          if (ok==false) return false; //ERROR in timestamp
+          CSV_datapoints.append(csvdp);
+          linecount++;
+      }
+    }
+    mw->logtext(QString("Read %1 lines of extinction/speciation rate data from CSV file").arg(linecount),OUTPUT_VERBOSE);
+
+    for (int i=0; i<CSV_datapoints.length(); i++)
+    {
+        qDebug()<<CSV_datapoints[i].time<<","<<CSV_datapoints[i].speciation<<","<<CSV_datapoints[i].extinction;
+    }
+    return true; //success
+}
 
 void Simulation::run(MainWindow *mainwin)
 {
     //performs a simulation run
     //keep pointer to main window instance
     mw=mainwin;
+
+    //Check CSV file if appropriate
+    parameter_mode=mw->getParameterMode();
+
+    if (parameter_mode==PARAMETER_MODE_CSV)
+    {
+        CSV_datapoints.clear();
+        if (!(readCSV(mainwin->getCSVfilename())))
+        {
+            mainwin->CSV_warning();
+            return;
+        }
+    }
 
 
     std::default_random_engine generator;
@@ -151,8 +199,6 @@ void Simulation::run(MainWindow *mainwin)
     CHANCE_EXTINCT=(int)(mw->getchanceextinct()*65535.0);
     CHANCE_SPECIATE=(int)(mw->getchancespeciate()*65535.0);
 
-    CHANCE_EXTINCT_DOUBLE=mw->getchanceextinct();
-    CHANCE_SPECIATE_DOUBLE=mw->getchancespeciate();
     SPECIATION_MODIFIER=mw->getspeciationmodifier();
     EXTINCTION_MODIFIER=mw->getextinctionmodifier();
     SPECIATION_CHANGE_PER_STEP=mw->getspeciationchangeperstep();
@@ -186,7 +232,7 @@ void Simulation::run(MainWindow *mainwin)
     int leafcountmax=mw->getmaxleafcount();
     bool usefossils=mw->getIncludeFossils();
     bool enforcemonophyly=mw->getEnforceMonophyly();
-    parameter_mode=mw->getParameterMode();
+
     if ((parameter_mode==PARAMETER_MODE_LOCAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_COMBINED_NON_GENETIC ||parameter_mode==PARAMETER_MODE_GLOBAL_NON_GENETIC || parameter_mode==PARAMETER_MODE_GLOBAL || parameter_mode==PARAMETER_MODE_LOCAL) && (SPECIATION_MODIFIER<0.00001 && EXTINCTION_MODIFIER<0.00001))
             parameter_mode=PARAMETER_MODE_FIXED; //if envelopes aren't set, just make it fixed
 
@@ -215,6 +261,9 @@ void Simulation::run(MainWindow *mainwin)
     for (int i=0; i<generations; i++)
     {
         actualiterations++;
+        //get chances for each run - as CSV version restarts with these
+        CHANCE_EXTINCT_DOUBLE=mw->getchanceextinct();
+        CHANCE_SPECIATE_DOUBLE=mw->getchancespeciate();
         dummy_parameter_lineage=nullptr; //important - constructor will try to check it!
 
         if (parameter_mode==PARAMETER_MODE_GLOBAL)
@@ -296,14 +345,25 @@ void Simulation::run(MainWindow *mainwin)
         //Run tree for correct number of iterations
         int j;
 
+        int CSV_index=0; //index of NEXT CSV point to look at
+
 
         for (j=0; j<iterations; j++)
         {
             if (parameter_mode==PARAMETER_MODE_CSV)
             {
-                //TODO
-
+                if (CSV_index<CSV_datapoints.length())
+                {
+                    if (CSV_datapoints[CSV_index].time<=j)
+                    {
+                        CHANCE_EXTINCT_DOUBLE=CSV_datapoints[CSV_index].extinction;
+                        CHANCE_SPECIATE_DOUBLE=CSV_datapoints[CSV_index].speciation;
+                        //qDebug()<<"In iteration "<<j<<" extinct now "<<CHANCE_EXTINCT_DOUBLE<<" speciate now "<<CHANCE_SPECIATE_DOUBLE;
+                        CSV_index++;
+                    }
+                }
             }
+            //qDebug()<<"Iter "<<j<< "extinct now "<<CHANCE_EXTINCT_DOUBLE<<" speciate now "<<CHANCE_SPECIATE_DOUBLE;
 
             if (parameter_mode==PARAMETER_MODE_GLOBAL)
             {

@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QPen>
 #include <QMessageBox>
+#include <QFileInfo>
 
 
 /////////////////////////////////////////////////////
@@ -841,3 +842,38 @@ void MainWindow::on_OutputPath_textChanged(const QString &arg1)
 {
     TheSim->filepath=ui->OutputPath->text();
 }
+
+void MainWindow::on_actionRates_from_CSV_file_triggered()
+{
+    //don't allow it to be checked it CSV file does not exist
+    if (ui->actionRates_from_CSV_file->isChecked())
+    {
+        if (!(QFileInfo::exists(ui->CSV_filename->text())))
+        {
+            ui->actionNone_fixed->setChecked(true); //reset to no values
+            QMessageBox::warning(this, "CSV file not set",
+                                 "Cannot use this mode without a file\nSelect a valid CSV file in settings and try again.",
+                                 QMessageBox::Ok);
+        }
+
+    }
+}
+
+void MainWindow::CSV_warning()
+{
+    QMessageBox::warning(this, "CSV file read error",
+                         "Could not read CSV file. Please check format and filename.",
+                         QMessageBox::Ok);
+}
+
+QString MainWindow::getCSVfilename()
+{
+    return ui->CSV_filename->text();
+}
+
+void MainWindow::on_SelectCSV_clicked()
+{
+   QString f = QFileDialog::getOpenFileName(this,"CSV file",QString(),"CSV files (*.csv)");
+   if (f!="") ui->CSV_filename->setText(f);
+}
+

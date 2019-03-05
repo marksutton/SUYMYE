@@ -90,6 +90,7 @@ private:
     void do_SCT(Lineage *root);
     void do_TCT(Lineage *root, bool enforcemonophyly);
     void do_STT(Lineage *root, bool enforcemonophyly);
+    bool readCSV(QString filename);
 };
 
 struct maxgenusdatapoint
@@ -98,10 +99,18 @@ struct maxgenusdatapoint
     quint32 treesize;
 };
 
+struct csvdatapoint
+{
+    quint32 time;
+    double extinction;
+    double speciation;
+};
+
 extern Simulation *TheSimGlobal;
 extern quint32 tweakers[32];
 extern int bitcounts[65536];
 extern QHash<qint64,Genus*> genera;
+extern QVector<csvdatapoint> CSV_datapoints;
 extern bool monomode;
 
 #endif // SIMULATION_H

@@ -78,6 +78,8 @@ public:
     int get_precise_leaf_count();
     double getspeciationchangeperstep();
     double getextinctionchangeperstep();
+    void CSV_warning();
+    QString getCSVfilename();
 public slots:
     void on_actionExit_triggered();
     void on_actionLogged_triggered();
@@ -101,6 +103,10 @@ public slots:
     void on_pushButton_clicked();
 
     void on_OutputPath_textChanged(const QString &arg1);
+
+    void on_actionRates_from_CSV_file_triggered();
+
+    void on_SelectCSV_clicked();
 
 private:
     Ui::MainWindow *ui;
